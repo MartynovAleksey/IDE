@@ -4,6 +4,10 @@
                 factoryClass="org.jetbrains.plugins.terminal.TerminalToolWindowFactory"
                 secondary="false"
                 canCloseContents="true"/>
+    <!-- SD-OpenIDE: bundled opencode, see OpenCodeToolWindowFactory -->
+    <toolWindow id="OpenCode" anchor="bottom" icon="/icons/opencode.svg"
+                factoryClass="org.jetbrains.plugins.terminal.opencode.OpenCodeToolWindowFactory"
+                secondary="false"/>
     <applicationService serviceImplementation="org.jetbrains.plugins.terminal.DefaultTerminalRunnerFactory" open="true"/>
 
     <fileEditorProvider id="classic-terminal-session-editor"

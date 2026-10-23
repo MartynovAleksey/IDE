@@ -30,6 +30,7 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.util.Locale
 
 object CommunityRepositoryModules {
@@ -228,6 +229,19 @@ object CommunityRepositoryModules {
     pluginAuto("intellij.terminal") { spec ->
       spec.withModule("intellij.terminal.completion")
       spec.withResource("resources/shell-integrations", "shell-integrations")
+
+      // SD-OpenIDE: opencode binary for the OpenCode tool window, macOS arm64 only
+      spec.withGeneratedPlatformResources(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT) { targetDir, context ->
+        val communityRoot = context.paths.communityHomeDirRoot
+        val uri = URI.create("https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-darwin-arm64.zip")
+        val archive = BuildDependenciesDownloader.downloadFileToCacheLocation(communityRoot, uri)
+        val sha256 = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(archive)).joinToString("") { "%02x".format(it) }
+        check(sha256 == "c400a2f8c8ab7e99478a7f4dd1a466b57bf33888e520d85c55780a5464c4b689") {
+          "Unexpected SHA-256 of $archive: $sha256"
+        }
+        BuildDependenciesDownloader.extractFile(archive, targetDir.resolve("bin"), communityRoot)
+      }
+      spec.withPlatformExecutable(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT, "bin/opencode")
     },
     pluginAuto(listOf("intellij.textmate.plugin")) { spec ->
       spec.withResourceFromModule("intellij.textmate", "lib/bundles", "lib/bundles")
