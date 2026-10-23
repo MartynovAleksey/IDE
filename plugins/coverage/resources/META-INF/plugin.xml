@@ -1,0 +1,66 @@
+<idea-plugin>
+  <name>Code Coverage for Java</name>
+  <id>Coverage</id>
+  <category>JVM Tools</category>
+  <depends optional="true" config-file="testng-integration.xml">TestNG-J</depends>
+  <depends optional="true" config-file="junit-integration.xml">JUnit</depends>
+
+  <dependencies>
+    <module name="intellij.java.backend"/>
+    <!-- region Generated dependencies - run `Generate Product Layouts` to regenerate -->
+    <module name="intellij.java.execution.impl"/>
+    <module name="intellij.java.frontback.psi"/>
+    <module name="intellij.java.psi"/>
+    <module name="intellij.java.psi.impl"/>
+    <module name="intellij.java.syntax"/>
+    <module name="intellij.platform.coverage"/>
+    <module name="intellij.platform.testRunner"/>
+    <!-- endregion -->
+  </dependencies>
+
+  <content>
+    <module name="intellij.libraries.test.discovery" loading="embedded"/>
+  </content>
+
+  <description>
+      <![CDATA[
+Collects and displays coverage information for Java.
+<p>
+To run your code with coverage, open the <b>Run</b> menu and click <b>Run with Coverage</b>.
+Results are displayed in the <b>Coverage</b> tool window, in the <b>Project</b> tool window, and in the editor.
+<p>
+To configure, open <b>Settings/Preferences | Build, Execution, Deployment | Coverage</b>.]]>
+   </description>
+  <vendor>JetBrains</vendor>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <runConfigurationExtension implementation="com.intellij.execution.coverage.CoverageJavaRunConfigurationExtension"/>
+    <coverageRunner implementation="com.intellij.coverage.IDEACoverageRunner"/>
+    <coverageRunner implementation="com.intellij.coverage.JaCoCoCoverageRunner"/>
+    <coverageEngine implementation="com.intellij.coverage.JavaCoverageEngine" order = "last"/>
+    <projectViewNodeDecorator implementation="com.intellij.coverage.CoverageProjectViewClassNodeDecorator"/>
+    <coverageOptions implementation="com.intellij.coverage.JavaCoverageOptions"/>
+
+    <projectService serviceImplementation="com.intellij.coverage.analysis.JavaCoverageAnnotator"/>
+    <programRunner implementation="com.intellij.coverage.DefaultJavaCoverageRunner"/>
+    <notificationGroup id="Coverage" displayType="BALLOON" bundle="messages.JavaCoverageBundle" key="notification.group.coverage"/>
+    <projectService serviceImplementation="com.intellij.coverage.CoverageNotifications"/>
+
+    <coverageRunner implementation="com.intellij.coverage.xml.XMLReportRunner"/>
+    <coverageEngine implementation="com.intellij.coverage.xml.XMLReportEngine"/>
+    <fileType name="JaCoCoCoverageReport"
+              extensions="exec"
+              implementationClass="com.intellij.coverage.JaCoCoCoverageFileType"
+              fieldName="INSTANCE"/>
+    <projectSettings service="com.intellij.coverage.JavaCoverageOptionsProvider"/>
+
+    <registryKey defaultValue="true"
+                 description="Collect JaCoCo coverage for classes with no location (pass additional inclnolocationclasses=true option)"
+                 key="idea.jacoco.collect.coverage.for.classes.with.no.location"/>
+  </extensions>
+
+  <extensionPoints>
+    <extensionPoint qualifiedName="com.intellij.javaCoverageEngineExtension" interface="com.intellij.coverage.JavaCoverageEngineExtension" dynamic="true"/>
+  </extensionPoints>
+  <resource-bundle>messages.JavaCoverageBundle</resource-bundle>
+</idea-plugin>
