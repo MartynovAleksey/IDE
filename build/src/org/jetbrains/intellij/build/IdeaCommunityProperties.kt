@@ -147,12 +147,12 @@ open class IdeaCommunityProperties(private val communityHomeDir: Path) : JetBrai
   override fun createMacCustomizer(projectHome: Path): MacDistributionCustomizer = ideaCommunityMacCustomizer(communityHomeDir)
 
   override fun getSystemSelector(appInfo: ApplicationInfoProperties, buildNumber: String): String {
-    return "SDIDECE${appInfo.majorVersion}.${appInfo.minorVersionMainPart}"
+    return "SDOpenIDE${appInfo.majorVersion}.${appInfo.minorVersionMainPart}"
   }
 
-  override fun getBaseArtifactName(appInfo: ApplicationInfoProperties, buildNumber: String): String = "sdide-ce-$buildNumber"
+  override fun getBaseArtifactName(appInfo: ApplicationInfoProperties, buildNumber: String): String = "sd-openide-$buildNumber"
 
-  override fun getOutputDirectoryName(appInfo: ApplicationInfoProperties): String = "sdide-ce"
+  override fun getOutputDirectoryName(appInfo: ApplicationInfoProperties): String = "sd-openide"
 }
 
 @Suppress("unused")
@@ -232,8 +232,8 @@ inline fun ideaCommunityWindowsCustomizer(
 ): WindowsDistributionCustomizer = windowsCustomizer(projectHome) {
   fileAssociations = listOf("java", "gradle", "groovy", "kt", "kts", "pom")
 
-  fullName { "SD_IDE CE" }
-  installDirNameHandler { "SD_IDE CE" }
+  fullName { "SD-OpenIDE" }
+  installDirNameHandler { "SD-OpenIDE" }
 
   uninstallFeedbackUrl { appInfo ->
     "https://www.jetbrains.com/idea/uninstall/?edition=IC-${appInfo.majorVersion}.${appInfo.minorVersion}"
@@ -249,9 +249,9 @@ inline fun ideaCommunityMacCustomizer(
   urlSchemes = listOf("idea")
   associateIpr = true
   fileAssociations = FileAssociation.from("java", "groovy", "kt", "kts")
-  bundleIdentifier = "com.sdide.ce"
+  bundleIdentifier = "com.sdopenide"
 
-  rootDirectoryName { _, _ -> "SD_IDE CE.app" }
+  rootDirectoryName { _, _ -> "SD-OpenIDE.app" }
 
   executableFilePatterns { base, _, _, _ ->
     val kotlinExecutables = KotlinBinaries.kotlinCompilerExecutables
@@ -266,7 +266,7 @@ inline fun ideaCommunityLinuxCustomizer(
   configure: LinuxCustomizerBuilder.() -> Unit = {}
 ): LinuxDistributionCustomizer = linuxCustomizer(projectHome) {
 
-  rootDirectoryName { _, _ -> "sdide-ce" }
+  rootDirectoryName { _, _ -> "sd-openide" }
 
   executableFilePatterns { base, _, _, _, _ ->
     base.plus(KotlinBinaries.kotlinCompilerExecutables).filterNot { it == "plugins/**/*.sh" }
