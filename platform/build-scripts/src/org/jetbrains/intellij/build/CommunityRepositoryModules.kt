@@ -33,6 +33,43 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Locale
 
+// SD-OpenIDE: opencode release archives bundled into the terminal plugin; hashes are from the GitHub release metadata
+private const val OPENCODE_VERSION = "v1.19.4"
+private val OPENCODE_ARCHIVES: List<Triple<SupportedDistribution, String, String>> = listOf(
+  Triple(SupportedDistribution(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT), "opencode-darwin-arm64.zip", "c400a2f8c8ab7e99478a7f4dd1a466b57bf33888e520d85c55780a5464c4b689"),
+  Triple(SupportedDistribution(OsFamily.MACOS, JvmArchitecture.x64, MacLibcImpl.DEFAULT), "opencode-darwin-x64.zip", "123ebd72609c4f8dbae0485cdac39b9aedfeb6576b2eef64f2e73152b1de82f4"),
+  Triple(SupportedDistribution(OsFamily.LINUX, JvmArchitecture.x64, LinuxLibcImpl.GLIBC), "opencode-linux-x64.tar.gz", "849bd6b3d959a1d2ef200ed1634a51c79a45ca236aa26665d75debd694805cce"),
+  Triple(SupportedDistribution(OsFamily.LINUX, JvmArchitecture.aarch64, LinuxLibcImpl.GLIBC), "opencode-linux-arm64.tar.gz", "8568230ccd847dc93e95b9f6894379077d3e014a16b48040743573e77c23e85f"),
+  Triple(SupportedDistribution(OsFamily.WINDOWS, JvmArchitecture.x64, WindowsLibcImpl.DEFAULT), "opencode-windows-x64.zip", "93b899277bd6f68803009e32bf71772ce43c34b18adf1e93b9b4d8780fdf62e5"),
+  Triple(SupportedDistribution(OsFamily.WINDOWS, JvmArchitecture.aarch64, WindowsLibcImpl.DEFAULT), "opencode-windows-arm64.zip", "36e696fd1d275b469ab02a1ccc00d161bfdcc0a4ffa93c2b7a4e57399f3ff347"),
+)
+
+private data class OpencodeExtraVersion(val distribution: SupportedDistribution, val version: String, val url: String, val sha256: String)
+
+// hashes computed from the downloaded archives: opencode.ai publishes no checksums
+private val OPENCODE_EXTRA_VERSIONS: List<OpencodeExtraVersion> = listOf(
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-darwin-arm64.zip", "f9edc1dded080e39aa61db94270a51af66772ac572be7d6b15fa6f87251a3dff"),
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.MACOS, JvmArchitecture.x64, MacLibcImpl.DEFAULT), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-darwin-x64.zip", "7f35265b6900ce75b01e03cab2497622026b402c021ecf6e6e68755874245a6b"),
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.LINUX, JvmArchitecture.x64, LinuxLibcImpl.GLIBC), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-linux-x64.tar.gz", "2edaf8cf96e81dec5ee996a3196b03345cf59e5a1673d83a4599bb4afc5c5f6d"),
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.LINUX, JvmArchitecture.aarch64, LinuxLibcImpl.GLIBC), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-linux-arm64.tar.gz", "759c9d6e7b246b81bcc93dfc6cc3bb2a38287c75b6202e305eacacb5dd882315"),
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.WINDOWS, JvmArchitecture.x64, WindowsLibcImpl.DEFAULT), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-windows-x64.zip", "6d3ee895c0f6e089bb1f1ee3addfa3d700cc4488a7da97f182cb700d3985a799"),
+  OpencodeExtraVersion(SupportedDistribution(OsFamily.WINDOWS, JvmArchitecture.aarch64, WindowsLibcImpl.DEFAULT), "2.1.4",
+                       "https://opencode.ai/files/bin/2.1.4/opencode-windows-arm64.zip", "2bf735889e52a817512d57dfe23a03d3861de0da2f2ef398ef9e91d8a4e81a20"),
+)
+
+private suspend fun extractOpencode(url: String, expectedSha256: String, targetDir: Path, context: BuildContext) {
+  val communityRoot = context.paths.communityHomeDirRoot
+  val archive = BuildDependenciesDownloader.downloadFileToCacheLocation(communityRoot, URI.create(url))
+  val sha256 = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(archive)).joinToString("") { "%02x".format(it) }
+  check(sha256 == expectedSha256) { "Unexpected SHA-256 of $archive: $sha256" }
+  BuildDependenciesDownloader.extractFile(archive, targetDir, communityRoot)
+}
+
 object CommunityRepositoryModules {
   /**
    * Specifies non-trivial layout for all plugins that sources are located in 'community' and 'contrib' repositories
@@ -230,18 +267,27 @@ object CommunityRepositoryModules {
       spec.withModule("intellij.terminal.completion")
       spec.withResource("resources/shell-integrations", "shell-integrations")
 
-      // SD-OpenIDE: opencode binary for the OpenCode tool window, macOS arm64 only
-      spec.withGeneratedPlatformResources(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT) { targetDir, context ->
-        val communityRoot = context.paths.communityHomeDirRoot
-        val uri = URI.create("https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-darwin-arm64.zip")
-        val archive = BuildDependenciesDownloader.downloadFileToCacheLocation(communityRoot, uri)
-        val sha256 = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(archive)).joinToString("") { "%02x".format(it) }
-        check(sha256 == "c400a2f8c8ab7e99478a7f4dd1a466b57bf33888e520d85c55780a5464c4b689") {
-          "Unexpected SHA-256 of $archive: $sha256"
+      // SD-OpenIDE: opencode binary for the OpenCode tool window, one archive per distribution
+      for ((distribution, archiveName, expectedSha256) in OPENCODE_ARCHIVES) {
+        val (os, arch, libc) = distribution
+        spec.withGeneratedPlatformResources(os, arch, libc) { targetDir, context ->
+          val url = "https://github.com/anomalyco/opencode/releases/download/$OPENCODE_VERSION/$archiveName"
+          extractOpencode(url, expectedSha256, targetDir.resolve("bin"), context)
         }
-        BuildDependenciesDownloader.extractFile(archive, targetDir.resolve("bin"), communityRoot)
+        if (os != OsFamily.WINDOWS) {
+          spec.withPlatformExecutable(os, arch, libc, "bin/opencode")
+        }
       }
-      spec.withPlatformExecutable(OsFamily.MACOS, JvmArchitecture.aarch64, MacLibcImpl.DEFAULT, "bin/opencode")
+      // additional versions offered in the OpenCode "+" dropdown, in bin/versions/<version>/
+      for ((distribution, version, url, expectedSha256) in OPENCODE_EXTRA_VERSIONS) {
+        val (os, arch, libc) = distribution
+        spec.withGeneratedPlatformResources(os, arch, libc) { targetDir, context ->
+          extractOpencode(url, expectedSha256, targetDir.resolve("bin/versions/$version"), context)
+        }
+        if (os != OsFamily.WINDOWS) {
+          spec.withPlatformExecutable(os, arch, libc, "bin/versions/$version/opencode")
+        }
+      }
     },
     pluginAuto(listOf("intellij.textmate.plugin")) { spec ->
       spec.withResourceFromModule("intellij.textmate", "lib/bundles", "lib/bundles")

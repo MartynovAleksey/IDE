@@ -171,7 +171,8 @@ public class JBTerminalWidget extends JediTermWidget implements Disposable, UiCo
   }
 
   static boolean isTerminalToolWindow(@Nullable ToolWindow toolWindow) {
-    return toolWindow != null && "Terminal".equals(toolWindow.getId()); // TerminalToolWindowFactory.TOOL_WINDOW_ID is not visible here
+    // TerminalToolWindowFactory.TOOL_WINDOW_ID is not visible here; SD-OpenIDE: OpenCode tabs also keep Escape for the process
+    return toolWindow != null && ("Terminal".equals(toolWindow.getId()) || "OpenCode".equals(toolWindow.getId()));
   }
 
   @Override

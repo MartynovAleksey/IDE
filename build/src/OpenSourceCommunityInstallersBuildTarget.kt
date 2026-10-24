@@ -17,7 +17,7 @@ object OpenSourceCommunityInstallersBuildTarget {
    * Also, skipping them allows sparing the GitHub runner's disk space.
    */
   private val BUILD_STEPS_DISABLED_FOR_GITHUB_ACTIONS: Set<String> = setOf(
-    BuildOptions.WINDOWS_ZIP_STEP,
+    // SD-OpenIDE: WINDOWS_ZIP_STEP stays enabled, the .zip is the Windows artifact when building on macOS
     BuildOptions.CROSS_PLATFORM_DISTRIBUTION_STEP,
     BuildOptions.SOURCES_ARCHIVE_STEP,
     BuildOptions.ARCHIVE_PLUGINS,

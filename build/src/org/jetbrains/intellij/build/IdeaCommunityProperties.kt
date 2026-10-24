@@ -48,7 +48,7 @@ open class IdeaCommunityProperties(private val communityHomeDir: Path) : JetBrai
     applicationInfoModule = "intellij.idea.community.customization"
     scrambleMainJar = false
     useSplash = true
-    buildCrossPlatformDistribution = true
+    buildCrossPlatformDistribution = false // SD-OpenIDE: it would carry the opencode binary of a single OS
     buildSourcesArchive = true
 
     imagesDirectoryPath = communityHomeDir.resolve("build/idea-community-images")

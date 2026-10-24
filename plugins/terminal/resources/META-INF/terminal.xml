@@ -7,7 +7,8 @@
     <!-- SD-OpenIDE: bundled opencode, see OpenCodeToolWindowFactory -->
     <toolWindow id="OpenCode" anchor="bottom" icon="/icons/opencode.svg"
                 factoryClass="org.jetbrains.plugins.terminal.opencode.OpenCodeToolWindowFactory"
-                secondary="false"/>
+                secondary="false"
+                canCloseContents="true"/>
     <applicationService serviceImplementation="org.jetbrains.plugins.terminal.DefaultTerminalRunnerFactory" open="true"/>
 
     <fileEditorProvider id="classic-terminal-session-editor"
@@ -144,6 +145,8 @@
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+    <!-- SD-OpenIDE: bundled opencode on PATH -->
+    <shellExecOptionsCustomizer implementation="org.jetbrains.plugins.terminal.opencode.OpenCodePathCustomizer"/>
     <terminalAgentProvider implementation="org.jetbrains.plugins.terminal.agent.DefaultTerminalAgentProvider" order="first"/>
     <commandSpecsProvider implementation="org.jetbrains.plugins.terminal.block.completion.spec.json.ShellDefaultCommandSpecsProvider"/>
     <commandSpecsProvider implementation="org.jetbrains.plugins.terminal.block.completion.spec.specs.ShellCodeBasedCommandSpecsProvider"/>
