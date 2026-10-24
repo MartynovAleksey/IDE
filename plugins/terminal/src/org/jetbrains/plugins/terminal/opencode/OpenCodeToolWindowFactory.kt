@@ -2,32 +2,20 @@
 package org.jetbrains.plugins.terminal.opencode
 
 import com.intellij.icons.AllIcons
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.PopupUtil
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.openapi.wm.ex.ToolWindowEx
-import com.intellij.openapi.wm.ex.ToolWindowManagerListener
-import com.intellij.ui.components.JBLabel
-import com.intellij.ui.content.ContentFactory
-import com.intellij.ui.content.ContentManagerEvent
-import com.intellij.ui.content.ContentManagerListener
-import org.jetbrains.plugins.terminal.LocalTerminalDirectRunner
-import org.jetbrains.plugins.terminal.shellStartupOptions
 import java.nio.file.Files
 import java.nio.file.Path
-import javax.swing.SwingConstants
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
@@ -39,8 +27,7 @@ internal const val OPENCODE_BIN_DIR_ENV: String = "SD_OPENCODE_BIN_DIR"
 
 internal val binaryName: String get() = if (SystemInfo.isWindows) "opencode.exe" else "opencode"
 
-private fun bundledBinDir(): Path? =
-  PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.plugins.terminal"))?.pluginPath?.resolve("bin")
+private fun bundledBinDir(): Path? = terminalPluginDir()?.resolve("bin")
 
 /** The default opencode bundled into the terminal plugin (`bin/opencode[.exe]`); may not exist, e.g. when running from sources. */
 internal fun openCodeBinaryPath(): Path? = bundledBinDir()?.resolve(binaryName)
@@ -59,44 +46,15 @@ private fun openCodeExtraVersions(): List<Pair<@NlsSafe String, Path>> {
  */
 internal class OpenCodeToolWindowFactory : ToolWindowFactory, DumbAware {
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-    // "+" and the version dropdown right after the tabs, as in Terminal
-    (toolWindow as? ToolWindowEx)?.setTabActions(NewSessionAction(), NewSessionWithVersionAction())
-    toolWindow.contentManager.addContentManagerListener(object : ContentManagerListener {
-      override fun contentRemoved(event: ContentManagerEvent) {
-        if (toolWindow.contentManager.contentCount == 0) toolWindow.hide()
-      }
-    })
-    project.messageBus.connect(toolWindow.disposable).subscribe(ToolWindowManagerListener.TOPIC, object : ToolWindowManagerListener {
-      override fun toolWindowShown(shownToolWindow: ToolWindow) {
-        if (shownToolWindow === toolWindow && toolWindow.contentManager.contentCount == 0) addSession(project, toolWindow)
-      }
-    })
-    addSession(project, toolWindow)
+    setUpSessionTabs(project, toolWindow, listOf(NewSessionAction(), NewSessionWithVersionAction())) { addSession(project, toolWindow) }
   }
 }
 
 /** @param version `null` for the default bundled opencode */
 private fun addSession(project: Project, toolWindow: ToolWindow, version: String? = null, binary: Path? = openCodeBinaryPath()) {
-  val manager = toolWindow.contentManager
   val baseTitle = if (version == null) TOOL_WINDOW_ID else "$TOOL_WINDOW_ID $version"
-  val title = if (manager.contentCount == 0) baseTitle else "$baseTitle (${manager.contentCount + 1})"
-  val sessionDisposable = Disposer.newDisposable("OpenCode session")
-  val content = if (binary != null && Files.isRegularFile(binary)) {
-    val options = shellStartupOptions(project.basePath) { it.envVariables(mapOf(OPENCODE_BIN_DIR_ENV to binary.parent.toString())) }
-    val widget = LocalTerminalDirectRunner.createTerminalRunner(project).startShellTerminalWidget(sessionDisposable, options, true)
-    widget.sendCommandToExecute("opencode") // resolved through PATH, see OpenCodePathCustomizer
-    ContentFactory.getInstance().createContent(widget.component, title, false).also {
-      it.preferredFocusableComponent = widget.preferredFocusableComponent
-    }
-  }
-  else {
-    @Suppress("HardCodedStringLiteral")
-    val label = JBLabel("opencode not found: $binary", SwingConstants.CENTER)
-    ContentFactory.getInstance().createContent(label, title, false)
-  }
-  content.setDisposer(sessionDisposable)
-  manager.addContent(content)
-  manager.setSelectedContent(content, true)
+  val env = binary?.let { mapOf(OPENCODE_BIN_DIR_ENV to it.parent.toString()) } ?: emptyMap()
+  addShellSession(project, toolWindow, baseTitle, binary, "opencode", env)
 }
 
 private fun openCodeToolWindow(e: AnActionEvent): ToolWindow? =

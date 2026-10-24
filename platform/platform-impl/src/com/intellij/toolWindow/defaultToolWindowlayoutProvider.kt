@@ -283,6 +283,7 @@ internal class DefaultToolWindowLayoutBuilderImpl : DefaultToolWindowLayoutBuild
           addOrUpdate("Problems View")
           addOrUpdate("Terminal")
           addOrUpdate("OpenCode") // SD-OpenIDE
+          addOrUpdate("Hermes") // SD-OpenIDE
           addOrUpdate("Services")
         }
       }
