@@ -1,0 +1,23 @@
+<idea-plugin>
+  <id>io.sdopenide.hermes</id>
+  <name>Hermes for IntelliJ</name>
+  <vendor url="https://github.com/MartynovAleksey/IDE">SD-OpenIDE</vendor>
+  <description><![CDATA[
+    <a href="https://github.com/nousresearch/hermes-agent">Hermes Agent</a> in the IDE: a Hermes tool window with session tabs,
+    Settings | Tools | Hermes, and <code>hermes</code> on PATH of local terminals. Ships a portable Hermes with ripgrep, node,
+    npm and ffmpeg for its OS.
+  ]]></description>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>org.jetbrains.plugins.terminal</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="Hermes" anchor="bottom" icon="/icons/hermes.svg"
+                factoryClass="io.sdopenide.hermes.HermesToolWindowFactory"
+                canCloseContents="true"/>
+    <projectConfigurable groupId="tools" displayName="Hermes" id="sd.hermes"
+                         instance="io.sdopenide.hermes.HermesSettingsConfigurable"/>
+  </extensions>
+  <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+    <shellExecOptionsCustomizer implementation="io.sdopenide.hermes.HermesPathCustomizer"/>
+  </extensions>
+</idea-plugin>

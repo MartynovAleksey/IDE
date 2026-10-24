@@ -20,7 +20,7 @@ Zip плагина для каждой из платформ macOS arm64, Linux 
 
 #### Scenario: Права на исполнение
 - **WHEN** плагин установлен на macOS или Linux
-- **THEN** launcher, Python и инструменты Hermes исполняемые (плагин восстанавливает права при старте, если установщик их потерял)
+- **THEN** launcher, Python и инструменты Hermes исполняемые, симлинки `npm`/`npx` на месте (их сохраняет zip, установщик плагинов восстанавливает)
 
 ### Requirement: Панель и настройки Hermes
 Плагин SHALL давать панель `Hermes` с вкладками-консолями (локальный shell в корне проекта, в нём сразу `hermes`; «+» после вкладок; закрытие вкладки завершает процесс; консоль после выхода), страницу Settings | Tools | Hermes (модель `model.default`, провайдер `model.provider`, Base URL `model.base_url`, интерфейс `display.interface`, кнопки «Run hermes setup…», «Select model…», «Open config.yaml», «Open .env»; чтение/запись средствами Hermes), пункт «Hermes Settings…» в меню «⋮» панели и флаг «Run hermes setup in new Hermes tabs while no model is selected», по умолчанию выключенный. Каталог `bin` Hermes SHALL добавляться в `PATH` локальных терминалов.
