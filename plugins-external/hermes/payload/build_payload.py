@@ -7,7 +7,7 @@ installed by Hermes' own `pm` into the payload store named by manifest.json.
 Must run natively: `pm` verifies every tool by executing it.
 
     usage: build_payload.py <hermes-version> <out-dir>
-    result: <out-dir>/hermes-payload-<version>-<platform>.tar.gz with hermes/{bin,python,site-packages,app,tools,...}
+    result: <out-dir>/hermes-payload-<version>-<platform>.tar.gz with hermes/{bin,python,venv,app,tools,pm-runtime,...}
 """
 import hashlib
 import json
@@ -25,6 +25,9 @@ SKIPPED_SOURCES = (".git", "tests", "tests-js", "website", "apps", "contributors
 WINDOWS = sys.platform == "win32"
 # uv's `python3` link is dropped by the dereferencing copy; the versioned binary is a real file
 PYTHON_EXE = "python.exe" if WINDOWS else "bin/python" + PYTHON_VERSION.rsplit(".", 1)[0]
+# dependencies sit in a venv layout named by manifest.json: Hermes processes started without our PYTHONPATH
+# (the TUI gateway) select it themselves; the payload's own Python runs it, the venv has no interpreter
+SITE = "venv/Lib/site-packages" if WINDOWS else "venv/lib/python" + PYTHON_VERSION.rsplit(".", 1)[0] + "/site-packages"
 
 
 def host_platform() -> str:
@@ -55,13 +58,16 @@ def main(version: str, out_dir: Path) -> None:
   python_home = next(p for p in (work / "pythons").glob(f"cpython-{PYTHON_VERSION}-*") if p.is_dir() and not p.is_symlink())
   shutil.copytree(python_home, dest / "python", symlinks=False, ignore_dangling_symlinks=True)
   python = dest / "python" / PYTHON_EXE
-  run("uv", "pip", "install", "--quiet", "--no-deps", "--no-build", "--target", dest / "site-packages", "--python", python, "-r", requirements)
+  run("uv", "pip", "install", "--quiet", "--no-deps", "--no-build", "--target", dest / SITE, "--python", python, "-r", requirements)
+  (dest / "venv/pyvenv.cfg").write_text(f"version = {PYTHON_VERSION}\n")
+  # like Hermes' own payloads: the venv resolves the sources through a relative .pth
+  (dest / SITE / "hermes-agent.pth").write_text(Path(os.path.relpath(dest / "app", dest / SITE)).as_posix() + "\n")
   shutil.copytree(src, dest / "app", ignore=shutil.ignore_patterns(*SKIPPED_SOURCES))
   shutil.copy2(src / "LICENSE", dest / "LICENSE")
 
   env = {
     **os.environ,
-    "PYTHONPATH": os.pathsep.join([str(dest / "app"), str(dest / "site-packages")]),
+    "PYTHONPATH": os.pathsep.join([str(dest / "app"), str(dest / SITE)]),
     "PYTHONNOUSERSITE": "1",
     "HERMES_HOME": str(work / "home"),  # never the builder's own ~/.hermes
   }
@@ -78,7 +84,8 @@ def main(version: str, out_dir: Path) -> None:
       "stage_manager_runtime(python=py, destination=root / 'pm-runtime', project=root / 'app' / 'pm'); "
       "seal_pm_runtime(root, py)", dest, python, cwd=dest / "app", env={**env, "HERMES_RUNTIME_DIR": str(dest / "tools")})
   build_tui(src, dest, work, env)
-  (dest / "manifest.json").write_text(json.dumps({"repo": "app", "store": "tools", "runtime": {"commands": {"hermes": "bin/hermes"}}}))
+  (dest / "manifest.json").write_text(json.dumps({"repo": "app", "store": "tools", "venv": "venv", "runtime": {
+    "commands": {"hermes": "bin/hermes"}, "storePython": "python/" + PYTHON_EXE}}))
   write_launcher(dest)
   verify(dest, version, env)
 
@@ -109,7 +116,7 @@ def write_launcher(dest: Path) -> None:
       "@echo off\r\n"
       "rem Portable Hermes launcher: bundled CPython + vendored dependencies + Hermes sources\r\n"
       'set "HERMES_PORTABLE=%~dp0.."\r\n'
-      'set "PYTHONPATH=%HERMES_PORTABLE%\\app;%HERMES_PORTABLE%\\site-packages"\r\n'
+      'set "PYTHONPATH=%HERMES_PORTABLE%\\app;%HERMES_PORTABLE%\\venv\\Lib\\site-packages"\r\n'
       'set "PYTHONNOUSERSITE=1"\r\n'
       '"%HERMES_PORTABLE%\\python\\python.exe" -m hermes_cli.main %*\r\n')
   else:
@@ -119,7 +126,7 @@ def write_launcher(dest: Path) -> None:
       "#!/bin/sh\n"
       "# Portable Hermes launcher: bundled CPython + vendored dependencies + Hermes sources\n"
       'HERE="$(cd "$(dirname "$0")/.." && pwd)"\n'
-      'PYTHONPATH="$HERE/app:$HERE/site-packages" PYTHONNOUSERSITE=1 exec "$HERE/python/' + PYTHON_EXE + '" -m hermes_cli.main "$@"\n')
+      'PYTHONPATH="$HERE/app:$HERE/' + SITE + '" PYTHONNOUSERSITE=1 exec "$HERE/python/' + PYTHON_EXE + '" -m hermes_cli.main "$@"\n')
     launcher.chmod(0o755)
 
 
@@ -136,6 +143,11 @@ def verify(dest: Path, version: str, env: dict) -> None:
      f"print(check_runtime(Path(r'{dest / 'app'}')))"],
     env=env, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1]
   assert verdict == "None", f"payload is not complete: {verdict}"
+  # the TUI gateway starts with only app/ on PYTHONPATH and must find the dependencies itself
+  subprocess.run(
+    [str(dest / "python" / PYTHON_EXE), "-c", "from pathlib import Path; from pm.environments import activate_dependencies; "
+     f"activate_dependencies(Path(r'{dest / 'app'}')); import ruamel.yaml"],
+    env={**env, "PYTHONPATH": str(dest / "app")}, check=True)
   assert (dest / "app/hermes_cli/tui_dist/entry.js").is_file(), "prebuilt TUI missing"
   # the TUI resolves node through the sealed PM runtime
   node = subprocess.run(
