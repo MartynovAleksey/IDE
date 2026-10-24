@@ -25,6 +25,13 @@ function buildDmg() {
   done
   echo "Extracting $sit.."
   unzip -q -o "$sit" -d "$buildDir/$explodedSitDir"
+  if [ "$contentSigned" != "true" ]; then
+    # SD-OpenIDE: without a Developer ID the bundle is unsealed and Gatekeeper calls it "damaged";
+    # an ad-hoc signature seals it, so macOS offers "Open Anyway" in Privacy & Security instead
+    echo "Ad-hoc signing the app bundle.."
+    codesign --force --deep --sign - "$buildDir/$explodedSitDir/"*.app
+    codesign --verify --deep --strict "$buildDir/$explodedSitDir/"*.app
+  fi
   (
     cd "$buildDir"
     trap 'cd .. && rm -rf "$buildDir"' EXIT
