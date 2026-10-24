@@ -1,0 +1,42 @@
+name: Hermes payload
+
+# Builds the portable Hermes Agent payload natively on each OS (Hermes' `pm` verifies its tools by running them)
+# and attaches hermes-payload-<version>-<os>.tar.gz to the release hermes-payload-<version>.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Hermes Agent version (tag without "v")
+        default: 0.22.5
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: hermes-payload-${{ inputs.version }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease --title "Hermes payload ${{ inputs.version }}" --notes "Portable Hermes Agent v${{ inputs.version }} with ripgrep, node, npm, ffmpeg for the Hermes for IntelliJ plugin."
+
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04, ubuntu-24.04-arm, windows-2025]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: plugins-external/hermes/payload
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --no-project --python 3.13 python plugins-external/hermes/payload/build_payload.py "${{ inputs.version }}" out
+      - run: gh release upload "$TAG" out/*.tar.gz --clobber -R "$GITHUB_REPOSITORY"
