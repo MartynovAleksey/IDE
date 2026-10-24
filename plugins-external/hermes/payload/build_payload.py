@@ -71,6 +71,13 @@ def main(version: str, out_dir: Path) -> None:
   # tools go into the payload store before manifest.json exists: with it the store reads as sealed and pm writes to ~/.hermes
   run(python, "-m", "pm.cli", "install", "--tools-only", "--without", "agent-browser", "--without", "cua-driver",
       cwd=dest / "app", env={**env, "HERMES_RUNTIME_DIR": str(dest / "tools")})
+  # the resident PM runtime Hermes' own payloads carry next to manifest.json; without it `pm.ensure("node")` fails,
+  # e.g. when `hermes --tui` looks for node
+  run(python, "-c", "import sys; from pathlib import Path; from pm import stage_manager_runtime; "
+      "from scripts.bundles.payload import seal_pm_runtime; root, py = Path(sys.argv[1]), Path(sys.argv[2]); "
+      "stage_manager_runtime(python=py, destination=root / 'pm-runtime', project=root / 'app' / 'pm'); "
+      "seal_pm_runtime(root, py)", dest, python, cwd=dest / "app", env={**env, "HERMES_RUNTIME_DIR": str(dest / "tools")})
+  build_tui(src, dest, work, env)
   (dest / "manifest.json").write_text(json.dumps({"repo": "app", "store": "tools", "runtime": {"commands": {"hermes": "bin/hermes"}}}))
   write_launcher(dest)
   verify(dest, version, env)
@@ -81,6 +88,18 @@ def main(version: str, out_dir: Path) -> None:
     tar.add(dest, arcname="hermes", filter=lambda info: info.replace(uid=0, gid=0, uname="", gname="", deep=False))
   print(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive}")
   shutil.rmtree(work, ignore_errors=True)
+
+
+def build_tui(src: Path, dest: Path, work: Path, env: dict) -> None:
+  """Prebuilds the Ink TUI (`display.interface: tui`) with Hermes' own scripts and the payload's node, into
+  hermes_cli/tui_dist like Hermes' packaged builds: otherwise the first `hermes --tui` runs npm install from the network."""
+  # pm's node keeps npm beside it (bin/node + bin/npm; the Windows zip has node.exe + npm.cmd, maybe without bin/)
+  node = next(p for pattern in ("node-*/bin/node", "node-*/bin/node.exe", "node-*/node.exe") for p in (dest / "tools").glob(pattern))
+  node_env = {**env, "PATH": str(node.parent) + os.pathsep + os.environ["PATH"], "CI": "1"}
+  run(node, "scripts/build/node-deps.mjs", "--source", src, "--workspace", "ui-tui", cwd=src, env=node_env)
+  run(node, "scripts/build/tui.mjs", "--source", src, "--out", work / "tui", cwd=src, env=node_env)
+  shutil.copytree(work / "tui" / "dist", dest / "app/hermes_cli/tui_dist")
+  shutil.copy2(work / "tui" / "package.json", dest / "app/hermes_cli/tui_dist/package.json")
 
 
 def write_launcher(dest: Path) -> None:
@@ -117,6 +136,12 @@ def verify(dest: Path, version: str, env: dict) -> None:
      f"print(check_runtime(Path(r'{dest / 'app'}')))"],
     env=env, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1]
   assert verdict == "None", f"payload is not complete: {verdict}"
+  assert (dest / "app/hermes_cli/tui_dist/entry.js").is_file(), "prebuilt TUI missing"
+  # the TUI resolves node through the sealed PM runtime
+  node = subprocess.run(
+    [str(dest / "python" / PYTHON_EXE), "-c", "import shutil; from pm import ensure; print(shutil.which('node', path=ensure('node').env['PATH']))"],
+    env=env, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1]
+  assert Path(node).resolve().is_relative_to(dest.resolve()), f"node outside the payload: {node}"
   print("payload verified:", version, host_platform(), flush=True)
 
 
