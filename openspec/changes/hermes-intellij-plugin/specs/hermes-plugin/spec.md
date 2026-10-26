@@ -34,7 +34,7 @@ Zip плагина для каждой из платформ macOS arm64, Linux 
 - **THEN** `hermes config get model.default` возвращает введённое значение
 
 ### Requirement: Escape в Hermes
-Нажатие Escape во вкладке Hermes MUST передаваться процессу Hermes и MUST NOT переводить фокус в редактор — и в SD-OpenIDE, и в IntelliJ IDEA.
+Нажатие Escape во вкладке Hermes MUST передаваться процессу Hermes и MUST NOT переводить фокус в редактор — и в SD-OpenIDE, и в IntelliJ IDEA, — если только в Settings | Tools | Terminal «Move focus to the editor with» не задан Escape: тогда, как в Terminal, Escape переводит фокус в редактор.
 
 #### Scenario: Escape в IntelliJ IDEA
 - **WHEN** фокус во вкладке Hermes в IntelliJ IDEA и пользователь нажимает Escape
