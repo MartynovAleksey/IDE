@@ -20,6 +20,6 @@
 
 ## 4. Проверка
 
-- [x] 4.1 Установить zip плагина macOS arm64 в SD-OpenIDE: панель Hermes, вкладка запускает `hermes`, страница настроек, нет `install out of sync`
-- [x] 4.2 Установить тот же zip в IntelliJ IDEA 2026.2 и проверить панель и Escape (Escape следует настройке Terminal «Move focus to the editor with»)
-- [x] 4.3 С подтверждения пользователя опубликовать zip плагина в GitHub-релиз (выложены в релиз SD-OpenIDE `0.0.3`)
+- [ ] 4.1 Установить zip плагина macOS arm64 в SD-OpenIDE: панель Hermes, вкладка запускает `hermes`, страница настроек, нет `install out of sync`
+- [ ] 4.2 Установить тот же zip в IntelliJ IDEA 2026.2 (если доступна) и проверить панель и Escape
+- [ ] 4.3 С подтверждения пользователя опубликовать zip плагина в GitHub-релиз `hermes-intellij-0.1.0`
