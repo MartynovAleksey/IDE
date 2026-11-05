@@ -1,12 +1,14 @@
 // Copyright 2000-2026 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-package org.jetbrains.plugins.terminal.opencode
+package io.sdopenide.opencode
 
 import com.intellij.icons.AllIcons
+import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.PopupUtil
 import com.intellij.openapi.util.NlsSafe
@@ -20,6 +22,7 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 
+// SD-OpenIDE places a tool window with this id between Terminal and Services and keeps Escape in its terminals
 private const val TOOL_WINDOW_ID = "OpenCode"
 
 /** Env var with the bin directory of the opencode version a tab runs; [OpenCodePathCustomizer] puts it first on PATH. */
@@ -27,9 +30,9 @@ internal const val OPENCODE_BIN_DIR_ENV: String = "SD_OPENCODE_BIN_DIR"
 
 internal val binaryName: String get() = if (SystemInfo.isWindows) "opencode.exe" else "opencode"
 
-private fun bundledBinDir(): Path? = terminalPluginDir()?.resolve("bin")
+private fun bundledBinDir(): Path? = PluginManagerCore.getPlugin(PluginId.getId("io.sdopenide.opencode"))?.pluginPath?.resolve("bin")
 
-/** The default opencode bundled into the terminal plugin (`bin/opencode[.exe]`); may not exist, e.g. when running from sources. */
+/** The default opencode in this plugin (`bin/opencode[.exe]`); absent in a zip built without package_plugin.py, e.g. in `runIde`. */
 internal fun openCodeBinaryPath(): Path? = bundledBinDir()?.resolve(binaryName)
 
 /** Additional versions bundled into `bin/versions/<version>/`, as (version, binary). */
@@ -42,11 +45,12 @@ private fun openCodeExtraVersions(): List<Pair<@NlsSafe String, Path>> {
 }
 
 /**
- * SD-OpenIDE: each tab is a local shell that starts `opencode`, so the tab stays usable as a console after opencode exits.
+ * Each tab is a local shell that starts `opencode`, so the tab stays usable as a console after opencode exits.
  */
 internal class OpenCodeToolWindowFactory : ToolWindowFactory, DumbAware {
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
     setUpSessionTabs(project, toolWindow, listOf(NewSessionAction(), NewSessionWithVersionAction())) { addSession(project, toolWindow) }
+    keepEscapeInTerminals(toolWindow)
   }
 }
 

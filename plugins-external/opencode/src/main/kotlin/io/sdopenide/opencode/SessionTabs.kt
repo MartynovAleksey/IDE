@@ -1,9 +1,7 @@
 // Copyright 2000-2026 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-package org.jetbrains.plugins.terminal.opencode
+package io.sdopenide.opencode
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
@@ -18,10 +16,6 @@ import org.jetbrains.plugins.terminal.shellStartupOptions
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.SwingConstants
-
-/** SD-OpenIDE: session tabs of agent tool windows (OpenCode; the Hermes plugin keeps its own copy). */
-internal fun terminalPluginDir(): Path? =
-  PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.plugins.terminal"))?.pluginPath
 
 /**
  * Puts [tabActions] right after the tabs (as in Terminal), hides the tool window when its last tab closes,

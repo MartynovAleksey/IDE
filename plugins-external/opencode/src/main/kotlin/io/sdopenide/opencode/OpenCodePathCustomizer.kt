@@ -1,5 +1,5 @@
 // Copyright 2000-2026 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-package org.jetbrains.plugins.terminal.opencode
+package io.sdopenide.opencode
 
 import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.terminal.startup.MutableShellExecOptions
@@ -8,7 +8,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * SD-OpenIDE: puts the bundled opencode on PATH of local terminal sessions, so `opencode -s <id>` works in any tab.
+ * Puts the bundled opencode on PATH of local terminal sessions, so `opencode -s <id>` works in any tab.
  * An OpenCode tab started with a specific version passes its bin directory in [OPENCODE_BIN_DIR_ENV].
  */
 internal class OpenCodePathCustomizer : ShellExecOptionsCustomizer {

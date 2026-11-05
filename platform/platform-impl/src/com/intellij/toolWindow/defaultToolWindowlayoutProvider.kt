@@ -282,8 +282,8 @@ internal class DefaultToolWindowLayoutBuilderImpl : DefaultToolWindowLayoutBuild
           // Problems
           addOrUpdate("Problems View")
           addOrUpdate("Terminal")
-          addOrUpdate("OpenCode") // SD-OpenIDE
-          addOrUpdate("Hermes") // SD-OpenIDE
+          addOrUpdate("OpenCode") // SD-OpenIDE: the OpenCode for IntelliJ plugin
+          addOrUpdate("Hermes") // SD-OpenIDE: the Hermes for IntelliJ plugin
           addOrUpdate("Services")
         }
       }
