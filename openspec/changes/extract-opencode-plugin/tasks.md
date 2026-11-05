@@ -36,4 +36,4 @@
 - [ ] 5.4 Escape в терминале вкладки уходит в opencode в SD-OpenIDE и в IntelliJ IDEA 2026.2; Escape в поиске терминала закрывает поиск
 - [ ] 5.5 Установка в IntelliJ IDEA 2026.2: панель работает так же
 - [x] 5.6 Пересобранная SD-OpenIDE без плагина: нет `plugins/terminal/bin/opencode` и панели OpenCode
-- [ ] 5.7 По подтверждению пользователя: GitHub-релиз `opencode-intellij-0.1.0` с 6 zip; обновить задачу MartynovAleksey/IDE#1
+- [x] 5.7 По подтверждению пользователя: GitHub-релиз `opencode-intellij-0.1.0` с 6 zip; обновить задачу MartynovAleksey/IDE#1
