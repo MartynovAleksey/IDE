@@ -27,9 +27,9 @@ Settings | Plugins | ⚙ | Install Plugin from Disk…, pick the zip for your OS
 Settings | Tools | OpenCode:
 
 - **Default version** — the opencode that the OpenCode button, "+" and `opencode` in Terminal run.
-- **Configuration** — per version: the path to its `opencode.json`, passed as `OPENCODE_CONFIG` and applied on top of the
-  global `~/.config/opencode/opencode.json` (empty: the global file only); `model` and `small_model` of that file; the whole
-  file, read-only, with Open in Editor.
+- **Configuration** — per version: its config directory (`opencode.json`, `agent/`, `command/`, `plugin/`, …), passed as
+  `OPENCODE_CONFIG_DIR` and applied on top of the global `~/.config/opencode` (empty: the global directory only); `model`
+  and `small_model` of the `opencode.json[c]` in it; the whole file, read-only, with Open in Editor and Reveal in Finder.
 
-opencode 2 runs sessions in a shared background service that ignores a tab's `OPENCODE_CONFIG`, so its tabs with their own
-file start `opencode --standalone`; after exiting opencode in such a tab, start it the same way.
+opencode 2 runs sessions in a shared background service that ignores a tab's `OPENCODE_CONFIG_DIR`, so its tabs with their own
+directory start `opencode --standalone`; after exiting opencode in such a tab, start it the same way.

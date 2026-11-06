@@ -6,7 +6,6 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.openapi.util.io.FileUtil
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.isDirectory
@@ -46,22 +45,28 @@ internal var defaultOpenCodeVersionName: String
   get() = PropertiesComponent.getInstance().getValue("sd.opencode.defaultVersion", "")
   set(value) = PropertiesComponent.getInstance().setValue("sd.opencode.defaultVersion", value, "")
 
-/** The opencode.json path for [version] as typed in Settings, "" if none. */
-internal fun openCodeConfigSetting(version: String): String = PropertiesComponent.getInstance().getValue("sd.opencode.config.$version", "")
+/** The config directory for [version] as typed in Settings, "" if none. */
+internal fun openCodeConfigDirSetting(version: String): String = PropertiesComponent.getInstance().getValue("sd.opencode.configDir.$version", "")
 
-internal fun setOpenCodeConfigSetting(version: String, path: String) {
-  PropertiesComponent.getInstance().setValue("sd.opencode.config.$version", path.trim(), "")
+internal fun setOpenCodeConfigDirSetting(version: String, path: String) {
+  PropertiesComponent.getInstance().setValue("sd.opencode.configDir.$version", path.trim(), "")
 }
 
-/** The opencode.json given for [version], which tabs of that version pass in OPENCODE_CONFIG; null if none. */
-internal fun openCodeConfigPath(version: String): Path? = configFile(openCodeConfigSetting(version))
+/** The config directory given for [version], which tabs of that version pass in OPENCODE_CONFIG_DIR; null if none. */
+internal fun openCodeConfigDir(version: String): Path? = configDir(openCodeConfigDirSetting(version))
 
-internal fun configFile(setting: String): Path? = setting.trim().ifEmpty { null }?.let { Path.of(FileUtil.expandUserHome(it)) }
+internal fun configDir(setting: String): Path? {
+  val path = setting.trim().ifEmpty { return null }
+  return if (path == "~" || path.startsWith("~/")) Path.of(System.getProperty("user.home"), path.removePrefix("~").removePrefix("/")) else Path.of(path)
+}
 
-/** opencode's global config file, which it always reads; a file in OPENCODE_CONFIG is applied on top of it. */
-internal fun globalOpenCodeConfig(): Path {
+/** opencode's global config directory, which it always reads; OPENCODE_CONFIG_DIR is applied on top of it. */
+internal fun globalOpenCodeConfigDir(): Path {
   val configHome = System.getenv("XDG_CONFIG_HOME")?.ifBlank { null }?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".config")
-  val dir = configHome.resolve("opencode")
-  return listOf("opencode.jsonc", "opencode.json", "config.json").map { dir.resolve(it) }.firstOrNull { Files.isRegularFile(it) }
-         ?: dir.resolve("opencode.json")
+  return configHome.resolve("opencode")
 }
+
+/** The config file opencode reads in a config directory: opencode.jsonc, opencode.json or config.json. */
+internal fun configFileIn(dir: Path): Path =
+  listOf("opencode.jsonc", "opencode.json", "config.json").map { dir.resolve(it) }.firstOrNull { Files.isRegularFile(it) }
+  ?: dir.resolve("opencode.json")

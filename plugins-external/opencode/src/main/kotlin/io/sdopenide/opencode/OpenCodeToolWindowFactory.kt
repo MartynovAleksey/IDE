@@ -38,12 +38,12 @@ private fun addSession(project: Project, toolWindow: ToolWindow, version: OpenCo
     return
   }
   val baseTitle = if (version == defaultOpenCodeVersion()) TOOL_WINDOW_ID else "$TOOL_WINDOW_ID ${version.version}"
-  val config = openCodeConfigPath(version.version)
+  val config = openCodeConfigDir(version.version)
   val env = buildMap {
     put(OPENCODE_BIN_DIR_ENV, version.binary.parent.toString())
-    if (config != null) put("OPENCODE_CONFIG", config.toString())
+    if (config != null) put("OPENCODE_CONFIG_DIR", config.toString())
   }
-  // opencode 2 runs sessions in a shared background service that does not see the tab's OPENCODE_CONFIG; --standalone gives the tab its own
+  // opencode 2 runs sessions in a shared background service that does not see the tab's OPENCODE_CONFIG_DIR; --standalone gives the tab its own
   val standalone = config != null && (version.version.substringBefore('.').toIntOrNull() ?: 0) >= 2
   addShellSession(project, toolWindow, baseTitle, version.binary, if (standalone) "opencode --standalone" else "opencode", env)
 }

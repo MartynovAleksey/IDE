@@ -3,6 +3,7 @@
 
 package io.sdopenide.opencode
 
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.openapi.editor.colors.EditorFontType
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -31,14 +32,14 @@ private const val NEW_CONFIG = "{\n  \"\$schema\": \"https://opencode.ai/config.
 private data class Models(val model: String, val smallModel: String)
 
 /**
- * Settings | Tools | OpenCode. The default version and the opencode.json of each version are IDE options;
- * the models are written into that opencode.json, so opencode started outside the IDE with it sees them too.
+ * Settings | Tools | OpenCode. The default version and the config directory of each version are IDE options;
+ * the models are written into the opencode.json in that directory, so opencode started outside the IDE with it sees them too.
  */
 internal class OpenCodeSettingsConfigurable(private val project: Project) : Configurable {
   private val versions = openCodeVersions().map { it.version }
   private val defaultVersion = ComboBox(versions.toTypedArray())
   private val configVersion = ComboBox(versions.toTypedArray())
-  private val configPath = TextFieldWithBrowseButton()
+  private val configDirField = TextFieldWithBrowseButton()
   private val model = JBTextField()
   private val smallModel = JBTextField()
   private val fileStatus = JBLabel()
@@ -47,7 +48,7 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
     font = EditorFontType.getGlobalPlainFont()
   }
 
-  /** opencode.json paths as edited here, by version. */
+  /** Config directories as edited here, by version. */
   private val paths = mutableMapOf<String, String>()
   /** Models as edited here and as on disk, by config file. */
   private val editedModels = mutableMapOf<Path, Models>()
@@ -60,19 +61,19 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
   override fun getDisplayName(): String = "OpenCode"
 
   override fun createComponent(): JComponent {
-    configPath.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleFile().withTitle("opencode.json"))
+    configDirField.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleDir().withTitle("opencode Config Directory"))
     configVersion.addActionListener {
       if (!updating) {
         rememberModels()
         show(configVersion.selectedItem as String)
       }
     }
-    configPath.textField.document.addDocumentListener(object : DocumentAdapter() {
+    configDirField.textField.document.addDocumentListener(object : DocumentAdapter() {
       override fun textChanged(e: DocumentEvent) {
         val version = shownVersion ?: return
         if (updating) return
         rememberModels()
-        paths[version] = configPath.text
+        paths[version] = configDirField.text
         showFile()
       }
     })
@@ -82,10 +83,11 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
       }
       group("Configuration") {
         row("Version:") { cell(configVersion) }
-        row("opencode.json:") {
-          cell(configPath).align(AlignX.FILL).comment(
-            "Passed to this version as OPENCODE_CONFIG and applied on top of the global ~/.config/opencode/opencode.json; " +
-            "leave empty to use the global file only.<br>opencode 2 tabs with their own file start <code>opencode --standalone</code>; " +
+        row("Config directory:") {
+          cell(configDirField).align(AlignX.FILL).comment(
+            "opencode.json, agent/, command/, plugin/ and the like for this version, passed as OPENCODE_CONFIG_DIR and applied " +
+            "on top of the global ~/.config/opencode; leave empty to use the global directory only.<br>" +
+            "opencode 2 tabs with their own directory start <code>opencode --standalone</code>; " +
             "start it the same way after you exit opencode in such a tab.")
         }
         row("Default model:") { cell(model).align(AlignX.FILL).comment("<code>model</code> in the file, for example anthropic/claude-sonnet-4-5") }
@@ -93,6 +95,7 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
         row {
           cell(fileStatus)
           button("Open in Editor") { openInEditor() }
+          button(RevealFileAction.getActionName()) { RevealFileAction.openDirectory(dirOf(shownVersion ?: return@button)) }
         }
         row { scrollCell(fileText).align(Align.FILL) }.resizableRow()
       }
@@ -103,7 +106,7 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
     paths.clear()
     editedModels.clear()
     savedModels.clear()
-    versions.forEach { paths[it] = openCodeConfigSetting(it) }
+    versions.forEach { paths[it] = openCodeConfigDirSetting(it) }
     defaultVersion.selectedItem = defaultOpenCodeVersion()?.version
     show(shownVersion ?: defaultOpenCodeVersion()?.version ?: return)
   }
@@ -113,7 +116,7 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
     updating = true
     try {
       configVersion.selectedItem = version
-      configPath.text = paths[version].orEmpty()
+      configDirField.text = paths[version].orEmpty()
     }
     finally {
       updating = false
@@ -121,7 +124,9 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
     showFile()
   }
 
-  private fun fileOf(version: String): Path = configFile(paths[version].orEmpty()) ?: globalOpenCodeConfig()
+  private fun dirOf(version: String): Path = configDir(paths[version].orEmpty()) ?: globalOpenCodeConfigDir()
+
+  private fun fileOf(version: String): Path = configFileIn(dirOf(version))
 
   private fun showFile() {
     val file = fileOf(shownVersion ?: return)
@@ -167,12 +172,12 @@ internal class OpenCodeSettingsConfigurable(private val project: Project) : Conf
 
   override fun isModified(): Boolean =
     defaultVersion.selectedItem != defaultOpenCodeVersion()?.version ||
-    versions.any { paths[it].orEmpty().trim() != openCodeConfigSetting(it) } ||
+    versions.any { paths[it].orEmpty().trim() != openCodeConfigDirSetting(it) } ||
     changedModels().isNotEmpty()
 
   override fun apply() {
     (defaultVersion.selectedItem as String?)?.let { defaultOpenCodeVersionName = it }
-    versions.forEach { setOpenCodeConfigSetting(it, paths[it].orEmpty()) }
+    versions.forEach { setOpenCodeConfigDirSetting(it, paths[it].orEmpty()) }
     for ((file, models) in changedModels()) {
       try {
         var text = if (Files.exists(file)) Files.readString(file) else NEW_CONFIG

@@ -8,9 +8,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Puts the default opencode version on PATH of local terminal sessions with its opencode.json in OPENCODE_CONFIG,
+ * Puts the default opencode version on PATH of local terminal sessions with its config directory in OPENCODE_CONFIG_DIR,
  * so `opencode -s <id>` works in any tab. An OpenCode tab passes the bin directory of its own version in [OPENCODE_BIN_DIR_ENV]
- * and sets OPENCODE_CONFIG itself.
+ * and sets OPENCODE_CONFIG_DIR itself.
  */
 internal class OpenCodePathCustomizer : ShellExecOptionsCustomizer {
   override fun customizeExecOptions(project: Project, shellExecOptions: MutableShellExecOptions) {
@@ -21,8 +21,8 @@ internal class OpenCodePathCustomizer : ShellExecOptionsCustomizer {
     }
     val version = defaultOpenCodeVersion() ?: return
     shellExecOptions.prependEntryToPATH(version.binary.parent)
-    if ("OPENCODE_CONFIG" !in shellExecOptions.envs) {
-      openCodeConfigPath(version.version)?.let { shellExecOptions.setEnvironmentVariableToPath("OPENCODE_CONFIG", it) }
+    if ("OPENCODE_CONFIG_DIR" !in shellExecOptions.envs) {
+      openCodeConfigDir(version.version)?.let { shellExecOptions.setEnvironmentVariableToPath("OPENCODE_CONFIG_DIR", it) }
     }
   }
 }
