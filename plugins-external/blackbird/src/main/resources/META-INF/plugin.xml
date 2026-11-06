@@ -1,0 +1,25 @@
+<idea-plugin>
+  <id>io.sdopenide.blackbird</id>
+  <name>Blackbird for IntelliJ</name>
+  <vendor url="https://github.com/MartynovAleksey/IDE">SD-OpenIDE</vendor>
+  <description><![CDATA[
+    <a href="https://github.com/MartynovAleksey/blackbird">blackbird</a> in the IDE: a Blackbird tool window with session tabs and a picker of the bundled
+    blackbird versions, Settings | Tools | Blackbird with the default version and, per version, a config directory, models,
+    the opencode-compatible mode and an import of opencode settings, and <code>blackbird</code> on PATH of local terminals.
+    Ships blackbird 1.x and 2.x for its OS.
+  ]]></description>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>org.jetbrains.plugins.terminal</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="Blackbird" anchor="bottom" icon="/icons/blackbird.png"
+                factoryClass="io.sdopenide.blackbird.BlackbirdToolWindowFactory"
+                secondary="false"
+                canCloseContents="true"/>
+    <projectConfigurable groupId="tools" displayName="Blackbird" id="sd.blackbird"
+                         instance="io.sdopenide.blackbird.BlackbirdSettingsConfigurable"/>
+  </extensions>
+  <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+    <shellExecOptionsCustomizer implementation="io.sdopenide.blackbird.BlackbirdPathCustomizer"/>
+  </extensions>
+</idea-plugin>
