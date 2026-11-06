@@ -8,14 +8,21 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Puts the bundled opencode on PATH of local terminal sessions, so `opencode -s <id>` works in any tab.
- * An OpenCode tab started with a specific version passes its bin directory in [OPENCODE_BIN_DIR_ENV].
+ * Puts the default opencode version on PATH of local terminal sessions with its opencode.json in OPENCODE_CONFIG,
+ * so `opencode -s <id>` works in any tab. An OpenCode tab passes the bin directory of its own version in [OPENCODE_BIN_DIR_ENV]
+ * and sets OPENCODE_CONFIG itself.
  */
 internal class OpenCodePathCustomizer : ShellExecOptionsCustomizer {
   override fun customizeExecOptions(project: Project, shellExecOptions: MutableShellExecOptions) {
-    val binDir = shellExecOptions.envs[OPENCODE_BIN_DIR_ENV]?.let { Path.of(it) } ?: openCodeBinaryPath()?.parent ?: return
-    if (Files.isRegularFile(binDir.resolve(binaryName))) {
-      shellExecOptions.prependEntryToPATH(binDir)
+    val tabBinDir = shellExecOptions.envs[OPENCODE_BIN_DIR_ENV]?.let { Path.of(it) }
+    if (tabBinDir != null) {
+      if (Files.isRegularFile(tabBinDir.resolve(binaryName))) shellExecOptions.prependEntryToPATH(tabBinDir)
+      return
+    }
+    val version = defaultOpenCodeVersion() ?: return
+    shellExecOptions.prependEntryToPATH(version.binary.parent)
+    if ("OPENCODE_CONFIG" !in shellExecOptions.envs) {
+      openCodeConfigPath(version.version)?.let { shellExecOptions.setEnvironmentVariableToPath("OPENCODE_CONFIG", it) }
     }
   }
 }

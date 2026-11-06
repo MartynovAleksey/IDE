@@ -68,6 +68,7 @@ def main(plugin_zip: Path, out_dir: Path, os_names: list[str]) -> None:
         info.external_attr = 0o100755 << 16
         info.compress_type = zipfile.ZIP_DEFLATED
         dst.writestr(info, data)
+      dst.writestr(f"{root}/bin/version.txt", DEFAULT_VERSION)  # the version of bin/opencode, shown in the IDE
     print(out)
 
 

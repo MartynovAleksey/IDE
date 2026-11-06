@@ -4,7 +4,8 @@
   <vendor url="https://github.com/MartynovAleksey/IDE">SD-OpenIDE</vendor>
   <description><![CDATA[
     <a href="https://opencode.ai">opencode</a> in the IDE: an OpenCode tool window with session tabs and a picker of the bundled
-    opencode versions, and <code>opencode</code> on PATH of local terminals. Ships opencode 1.x and 2.x for its OS.
+    opencode versions, Settings | Tools | OpenCode with the default version, models and an opencode.json per version,
+    and <code>opencode</code> on PATH of local terminals. Ships opencode 1.x and 2.x for its OS.
   ]]></description>
   <depends>com.intellij.modules.platform</depends>
   <depends>org.jetbrains.plugins.terminal</depends>
@@ -14,6 +15,8 @@
                 factoryClass="io.sdopenide.opencode.OpenCodeToolWindowFactory"
                 secondary="false"
                 canCloseContents="true"/>
+    <projectConfigurable groupId="tools" displayName="OpenCode" id="sd.opencode"
+                         instance="io.sdopenide.opencode.OpenCodeSettingsConfigurable"/>
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
     <shellExecOptionsCustomizer implementation="io.sdopenide.opencode.OpenCodePathCustomizer"/>
