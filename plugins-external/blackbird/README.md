@@ -2,18 +2,18 @@
 
 [blackbird](https://github.com/MartynovAleksey/blackbird) in IntelliJ IDEA and SD-OpenIDE 2026.2 (262): a Blackbird tool window
 with session tabs and a version picker, settings, and `blackbird` on PATH of local terminals. Each zip carries blackbird
-1.19.5.5 (default, the `blackbird/v1` line) and 2.2.5.5 (`blackbird/v2`) for one OS.
+1.19.5.6 (default, the `blackbird/v1` line) and 2.2.5.6 (`blackbird/v2`) for one OS.
 
 ## Build
 
 ```bash
 ./gradlew buildPlugin
-python3 package_plugin.py build/distributions/blackbird-intellij-0.1.3.zip build/dist
+python3 package_plugin.py build/distributions/blackbird-intellij-0.1.4.zip build/dist
 ```
 
 The first command compiles against the installed SD-OpenIDE (`ideaPath` in `gradle.properties`, or `-PideaPath=...`).
 The second downloads the blackbird archives, checks their SHA-256 and writes
-`build/dist/blackbird-intellij-0.1.3-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
+`build/dist/blackbird-intellij-0.1.4-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
 pass OS names after the output directory to build only those.
 
 To change the blackbird versions, edit `DEFAULT_VERSION` and `SHA256` in `package_plugin.py`; the hashes are in `SHA256SUMS`
@@ -34,6 +34,10 @@ Settings | Tools | Blackbird, also in the "⋮" menu of the tool window:
   - **opencode-compatible mode**, on by default: tabs start `blackbird --opencode-compatible` and work on opencode's config, sessions, keys
     and background service; the optional **opencode config directory** is passed as `BLACKBIRD_CONFIG_DIR`, which blackbird
     takes the same way as `--opencode-compatible=<dir>`; Terminal gets `BLACKBIRD_OPENCODE_COMPATIBLE=1` instead of the flag;
+  - **Interrupt key hint**, `ctrl+esc` by default: the key text blackbird shows in its interrupt hint (`interrupt_hint`).
+    Escape does not reach blackbird in IDE terminals while Ctrl+Esc does, so tabs and Terminal show "ctrl+esc interrupt".
+    Only the text changes, not the keys. The value goes in `BLACKBIRD_CLI_CONFIG_CONTENT` (2.x) or in a tui.json passed as
+    `BLACKBIRD_TUI_CONFIG` (1.x), so the user's own files stay as they are; leave it empty for blackbird's own "esc";
   - `model` and `small_model` of the config file of the directory in use (`blackbird.json[c]`, or `opencode.json[c]` in the
     opencode-compatible mode); the whole file, read-only, with Open in Editor and Reveal in Finder.
 - **Import from opencode** — runs `blackbird --opencode-import [path]` of the version chosen above in the project directory

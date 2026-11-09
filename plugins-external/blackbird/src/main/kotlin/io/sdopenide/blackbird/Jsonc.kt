@@ -80,7 +80,7 @@ internal object Jsonc {
     return if (i == 0 || text[i - 1] == '\n') text.substring(i, offset) else null
   }
 
-  private fun quote(value: String): String = buildString {
+  internal fun quote(value: String): String = buildString {
     append('"')
     for (c in value) {
       when {

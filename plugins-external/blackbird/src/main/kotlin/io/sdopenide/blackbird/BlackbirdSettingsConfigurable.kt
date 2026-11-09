@@ -50,6 +50,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
   private val configDirField = TextFieldWithBrowseButton()
   private val compatible = JBCheckBox("opencode-compatible mode")
   private val opencodeDirField = TextFieldWithBrowseButton()
+  private val interruptHintField = JBTextField()
   private val model = JBTextField()
   private val smallModel = JBTextField()
   private val fileStatus = JBLabel()
@@ -63,6 +64,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
   private val paths = mutableMapOf<String, String>()
   private val compatibleModes = mutableMapOf<String, Boolean>()
   private val opencodeDirs = mutableMapOf<String, String>()
+  private val interruptHints = mutableMapOf<String, String>()
   /** Models as edited here and as on disk, by config file. */
   private val editedModels = mutableMapOf<Path, Models>()
   private val savedModels = mutableMapOf<Path, Models>()
@@ -85,6 +87,11 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     }
     onEdit(configDirField) { paths[it] = configDirField.text }
     onEdit(opencodeDirField) { opencodeDirs[it] = opencodeDirField.text }
+    interruptHintField.document.addDocumentListener(object : DocumentAdapter() {
+      override fun textChanged(e: DocumentEvent) {
+        if (!updating) shownVersion?.let { interruptHints[it] = interruptHintField.text }
+      }
+    })
     compatible.addActionListener {
       val version = shownVersion ?: return@addActionListener
       if (updating) return@addActionListener
@@ -115,6 +122,11 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
           cell(opencodeDirField).align(AlignX.FILL).comment(
             "Passed as BLACKBIRD_CONFIG_DIR, the same as <code>--opencode-compatible=&lt;dir&gt;</code>; " +
             "leave empty to use the global ~/.config/opencode only.")
+        }
+        row("Interrupt key hint:") {
+          cell(interruptHintField).comment(
+            "Key text blackbird shows in its interrupt hint (<code>interrupt_hint</code>): Escape does not reach blackbird in IDE " +
+            "terminals, Ctrl+Esc does. Changes only the text, not the keys; leave empty for blackbird's own \"esc\".")
         }
         row("Default model:") { cell(model).align(AlignX.FILL).comment("<code>model</code> in the file, for example anthropic/claude-sonnet-4-5") }
         row("Small model:") { cell(smallModel).align(AlignX.FILL).comment("<code>small_model</code>, for titles and other light tasks") }
@@ -154,12 +166,14 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     paths.clear()
     compatibleModes.clear()
     opencodeDirs.clear()
+    interruptHints.clear()
     editedModels.clear()
     savedModels.clear()
     for (version in versions) {
       paths[version] = blackbirdConfigDirSetting(version)
       compatibleModes[version] = opencodeCompatible(version)
       opencodeDirs[version] = opencodeConfigDirSetting(version)
+      interruptHints[version] = interruptHint(version)
     }
     defaultVersion.selectedItem = defaultBlackbirdVersion()?.version
     show(shownVersion ?: defaultBlackbirdVersion()?.version ?: return)
@@ -173,6 +187,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
       configDirField.text = paths[version].orEmpty()
       compatible.isSelected = compatibleModes[version] == true
       opencodeDirField.text = opencodeDirs[version].orEmpty()
+      interruptHintField.text = interruptHints[version].orEmpty()
     }
     finally {
       updating = false
@@ -243,7 +258,8 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     versions.any {
       paths[it].orEmpty().trim() != blackbirdConfigDirSetting(it) ||
       isCompatible(it) != opencodeCompatible(it) ||
-      opencodeDirs[it].orEmpty().trim() != opencodeConfigDirSetting(it)
+      opencodeDirs[it].orEmpty().trim() != opencodeConfigDirSetting(it) ||
+      interruptHints[it].orEmpty().trim() != interruptHint(it)
     } ||
     changedModels().isNotEmpty()
 
@@ -253,6 +269,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
       setBlackbirdConfigDirSetting(version, paths[version].orEmpty())
       setOpencodeCompatible(version, isCompatible(version))
       setOpencodeConfigDirSetting(version, opencodeDirs[version].orEmpty())
+      setInterruptHint(version, interruptHints[version].orEmpty())
     }
     for ((file, models) in changedModels()) {
       try {

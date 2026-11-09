@@ -9,7 +9,7 @@ import java.nio.file.Path
 
 /**
  * Puts the default blackbird version on PATH of local terminal sessions with its config directory in BLACKBIRD_CONFIG_DIR and,
- * in the opencode-compatible mode, BLACKBIRD_OPENCODE_COMPATIBLE=1, so `blackbird -s <id>` works in any tab.
+ * in the opencode-compatible mode, BLACKBIRD_OPENCODE_COMPATIBLE=1, so `blackbird -s <id>` works in any tab; also the interrupt hint, see [interruptHintEnv].
  * A Blackbird tab passes the bin directory of its own version in [BLACKBIRD_BIN_DIR_ENV] and sets the rest itself.
  */
 internal class BlackbirdPathCustomizer : ShellExecOptionsCustomizer {
@@ -28,5 +28,6 @@ internal class BlackbirdPathCustomizer : ShellExecOptionsCustomizer {
     if ("BLACKBIRD_CONFIG_DIR" !in envs) {
       sessionConfigDir(version.version)?.let { shellExecOptions.setEnvironmentVariableToPath("BLACKBIRD_CONFIG_DIR", it) }
     }
+    interruptHintEnv(version.version).forEach { (name, value) -> if (name !in envs) shellExecOptions.setEnvironmentVariable(name, value) }
   }
 }

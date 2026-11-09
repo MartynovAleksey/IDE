@@ -3,6 +3,7 @@ package io.sdopenide.blackbird
 
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.SystemInfo
@@ -81,12 +82,43 @@ internal fun setOpencodeConfigDirSetting(version: String, path: String) {
 internal fun sessionConfigDir(version: String): Path? =
   if (opencodeCompatible(version)) configDir(opencodeConfigDirSetting(version)) else blackbirdConfigDir(version)
 
+private fun majorVersion(version: String): Int = version.substringBefore('.').toIntOrNull() ?: 0
+
 /** The command a session of [version] runs, given the directory it gets in BLACKBIRD_CONFIG_DIR. */
 internal fun sessionCommand(version: String, compatible: Boolean, configDir: Path?): String = buildString {
   append("blackbird")
   if (compatible) append(" --opencode-compatible")
   // blackbird 2 runs sessions in a shared background service that does not see the tab's BLACKBIRD_CONFIG_DIR; --standalone gives the tab its own
-  if (configDir != null && (version.substringBefore('.').toIntOrNull() ?: 0) >= 2) append(" --standalone")
+  if (configDir != null && majorVersion(version) >= 2) append(" --standalone")
+}
+
+// plain Escape does not reach blackbird in IDE terminals, while Ctrl+Esc arrives as the same ESC and interrupts the agent
+internal const val DEFAULT_INTERRUPT_HINT: String = "ctrl+esc"
+
+/** The key text blackbird of [version] shows in its interrupt hint (`interrupt_hint`); "" leaves blackbird's own "esc". */
+internal fun interruptHint(version: String): String =
+  PropertiesComponent.getInstance().getValue("sd.blackbird.interruptHint.$version", DEFAULT_INTERRUPT_HINT)
+
+internal fun setInterruptHint(version: String, hint: String) {
+  PropertiesComponent.getInstance().setValue("sd.blackbird.interruptHint.$version", hint.trim(), DEFAULT_INTERRUPT_HINT)
+}
+
+/**
+ * The environment that makes blackbird of [version] show [hint] in its interrupt hint without touching the user's files:
+ * blackbird 2 reads it from BLACKBIRD_CLI_CONFIG_CONTENT on top of cli.json, blackbird 1 from the tui.json in BLACKBIRD_TUI_CONFIG,
+ * written to [dir]. Empty for an empty [hint].
+ */
+internal fun interruptHintEnv(version: String, hint: String = interruptHint(version),
+                              dir: Path = PathManager.getSystemDir().resolve("blackbird")): Map<String, String> {
+  if (hint.isEmpty()) return emptyMap()
+  val config = "{\"interrupt_hint\":${Jsonc.quote(hint)}}"
+  if (majorVersion(version) >= 2) return mapOf("BLACKBIRD_CLI_CONFIG_CONTENT" to config)
+  val file = dir.resolve("tui-$version.json")
+  if (runCatching { Files.readString(file) }.getOrNull() != config) {
+    Files.createDirectories(dir)
+    Files.writeString(file, config)
+  }
+  return mapOf("BLACKBIRD_TUI_CONFIG" to file.toString())
 }
 
 /** The global config directory blackbird always reads (opencode's in the opencode-compatible mode); BLACKBIRD_CONFIG_DIR is applied on top of it. */

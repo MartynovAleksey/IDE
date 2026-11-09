@@ -42,6 +42,7 @@ private fun addSession(project: Project, toolWindow: ToolWindow, version: Blackb
   val env = buildMap {
     put(BLACKBIRD_BIN_DIR_ENV, version.binary.parent.toString())
     if (config != null) put("BLACKBIRD_CONFIG_DIR", config.toString())
+    interruptHintEnv(version.version).forEach { (name, value) -> if (System.getenv(name) == null) put(name, value) }
   }
   addShellSession(project, toolWindow, baseTitle, version.binary, sessionCommand(version.version, opencodeCompatible(version.version), config), env)
 }
