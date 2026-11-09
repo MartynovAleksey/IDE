@@ -7,7 +7,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
@@ -27,11 +26,11 @@ internal class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
 private fun addSession(project: Project, toolWindow: ToolWindow) =
   addShellSession(project, toolWindow, TOOL_WINDOW_ID, claudeBinary(), "claude", ClaudeCodeSettings.env())
 
-/** The installed Claude Code CLI: PATH of the IDE, then the native installer's ~/.local/bin (the IDE started from Dock may lack it on PATH). */
+/** The bundled claude, else an installed one: PATH of the IDE, then the native installer's ~/.local/bin (the IDE started from Dock may lack it on PATH). */
 private fun claudeBinary(): Path? {
-  val exe = if (SystemInfo.isWindows) "claude.exe" else "claude"
-  PathEnvironmentVariableUtil.findInPath(exe)?.let { return it.toPath() }
-  return Path.of(System.getProperty("user.home"), ".local", "bin", exe).takeIf { Files.isRegularFile(it) }
+  bundledClaude()?.let { return it }
+  PathEnvironmentVariableUtil.findInPath(claudeExe)?.let { return it.toPath() }
+  return Path.of(System.getProperty("user.home"), ".local", "bin", claudeExe).takeIf { Files.isRegularFile(it) }
 }
 
 private class NewSessionAction : DumbAwareAction("New Session", null, AllIcons.General.Add) {

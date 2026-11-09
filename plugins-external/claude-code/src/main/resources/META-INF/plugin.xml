@@ -3,8 +3,8 @@
   <name>Claude Code CLI</name>
   <vendor url="https://github.com/MartynovAleksey/IDE">SD-OpenIDE</vendor>
   <description><![CDATA[
-    <a href="https://claude.com/claude-code">Claude Code</a> in the IDE: a Claude Code tool window whose tabs run the installed
-    <code>claude</code> CLI in the project root, with Escape going to claude, and Settings | Tools | Claude Code with ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN. Install the CLI separately.
+    <a href="https://claude.com/claude-code">Claude Code</a> in the IDE: a Claude Code tool window whose tabs run the bundled
+    <code>claude</code> CLI in the project root, with Escape going to claude, and Settings | Tools | Claude Code with ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN. <code>claude</code> is also on PATH of local terminals. Ships Claude Code for its OS.
   ]]></description>
   <depends>com.intellij.modules.platform</depends>
   <depends>org.jetbrains.plugins.terminal</depends>
@@ -16,5 +16,8 @@
                 canCloseContents="true"/>
     <applicationConfigurable groupId="tools" displayName="Claude Code" id="sd.claudecode"
                              instance="io.sdopenide.claudecode.ClaudeCodeSettingsConfigurable"/>
+  </extensions>
+  <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+    <shellExecOptionsCustomizer implementation="io.sdopenide.claudecode.ClaudeCodePathCustomizer"/>
   </extensions>
 </idea-plugin>
