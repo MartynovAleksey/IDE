@@ -16,7 +16,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-DEFAULT_VERSION = "1.19.5.4"
+DEFAULT_VERSION = "1.19.5.5"
 
 # os -> release archive name; the version is filled in
 ARCHIVES = {
@@ -30,21 +30,21 @@ ARCHIVES = {
 
 # version -> os -> SHA-256 of the archive, from SHA256SUMS of the GitHub release
 SHA256 = {
-  "1.19.5.4": {
-    "macos-arm64": "9ac679bf8d4b7ff043e8397665b1e1c9c4b10b1de198f2c44d4e3243237cc6bf",
-    "macos-x64": "bf3b9a181aacc1ccf595a1d0470f26bc38935454bb60df85943b093a3af5e4c5",
-    "linux-x64": "0112b828e291d37a034ded4620c8092e7dd3d13093ec38a42b4a2a551d1fa1e4",
-    "linux-arm64": "318c59f4a7882f2d2a5382dc0be9097f1f99af53fac5c74345eb876c30b92a68",
-    "windows-x64": "11f8574137cc2e4d0e9d20e283a14f7df91ce0b8b2df5df1489d353c0fc4a7cf",
-    "windows-arm64": "4b897d25179ad44c7fa01b1dd1f1be6e15a176225c458818d1f33984b7b54ba9",
+  "1.19.5.5": {
+    "macos-arm64": "a595525714b1247f78df3532a8a4718f77fbf7c082243316fc9ea6963c0aea23",
+    "macos-x64": "cb241a96ce60607d11c4411da1c49cc2abf0cfbdf2e3946ea6b9c40035ca38e6",
+    "linux-x64": "f4db6bfcb399b3f5eabe5eeb92b63dfb6e9e2c99a51e3ae15ffbc6b4ce605530",
+    "linux-arm64": "dd020c7270a96ed86a0bc3c890dc220cb6632e4d6ec1e2bc0dec02e185266e3a",
+    "windows-x64": "3a2db24d0cc45851178849af371e9e2ef79b0f4ca304f71d24c5066240c5d73f",
+    "windows-arm64": "b3df3b0452a1e6fff90b10a3fd823901003aecb793a5b98cc3e82d248723bcee",
   },
-  "2.2.5.4": {
-    "macos-arm64": "2dee283736ddda1489aed83120d5ad73808e52d0242cac5c4159a52c47db3861",
-    "macos-x64": "af4b731c7fb3b5677f2708c4a8a7a6520065eb0444097bc4cf1bd7c4efb84b24",
-    "linux-x64": "32bcd6e533f750cf3f11a291b9547f936323e7a50cc47498f5b35eb8c15c5e23",
-    "linux-arm64": "f00870b10d02e63a1c90f8ef5ef42aa546360c6642d583ccb62495c132aeb6e2",
-    "windows-x64": "042b38f517ae17f92a1263aee79d34f6baae3084eeef2494b36ce9c267ebb493",
-    "windows-arm64": "fb41ad85ee543087430104bb782ea1730acf6547990714159bec7f50259daea5",
+  "2.2.5.5": {
+    "macos-arm64": "0ad6d3086b5561775592345caa61e5398bca0c3ceb010aa3a5fb14b09902508b",
+    "macos-x64": "47ee0ab43872a6a98e0b460fa1e8c598f57f041b445c1b617f47cf1c3625b1b2",
+    "linux-x64": "e99914aa6fe617cd6f9b80879db5e8888d3f9efdea50e66be5ace6d2360f12ce",
+    "linux-arm64": "16e2a8669558816ecd159cb4104998e301190353c1ae2d7f250ee7eba9ab1d04",
+    "windows-x64": "18f372c53fbbf350022c011d125ff12195271671d8fd343f4af66f73e41a8bdb",
+    "windows-arm64": "c9e71c94de2f25be85a7d615f1cfb3f76ef4b9e9537f69d4d4e707af68ed9f08",
   },
 }
 
