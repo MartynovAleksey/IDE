@@ -45,6 +45,10 @@ table { border-collapse: collapse; margin: 6px 0; } th, td { border: 1px solid c
 .diff ins { background: color-mix(in srgb, #3fa25b 18%, var(--bg)); }
 summary { cursor: pointer; opacity: 0.8; }
 #bar { padding: 4px 12px 10px; }
+#working { padding: 0 4px 6px; font-size: 0.92em; opacity: 0.75; }
+#working .spin { display: inline-block; color: #d97757; animation: spin 2s linear infinite; } #work-time { opacity: 0.6; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.thinking details > div { opacity: 0.8; font-style: italic; }
 #todos { margin-bottom: 6px; padding: 4px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--fg) 15%, var(--bg)); font-size: 0.9em; }
 #todos ul { margin: 2px 0; padding-left: 18px; } #todos .completed { text-decoration: line-through; opacity: 0.6; } #todos .in_progress { font-weight: 600; }
 #box { position: relative; padding: 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--fg) 20%, var(--bg)); }
@@ -73,6 +77,7 @@ button.primary { background: #3d8bfd; border-color: #3d8bfd; color: #fff; }
 <div id="log"><div id="empty">Ask Claude to write, explain or change code in this project.<br>Type / for commands, @ to mention a file, paste images.</div></div>
 <div id="bar">
   <div id="todos" hidden></div>
+  <div id="working" hidden><span class="spin">✻</span> <span id="work-label" aria-live="polite"></span> <span id="work-time"></span></div>
   <div id="box">
     <div id="menu" hidden role="listbox"></div>
     <div id="attachments"></div>

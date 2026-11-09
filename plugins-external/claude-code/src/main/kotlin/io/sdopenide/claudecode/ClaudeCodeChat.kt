@@ -104,7 +104,7 @@ private fun startClaude(project: Project, claude: Path, args: List<String>, onLi
   val process = command.createProcess()
   val app = ApplicationManager.getApplication()
   app.executeOnPooledThread { process.inputStream.bufferedReader().forEachLine(onLine); onLine("""{"type":"exit","code":${process.waitFor()}}""") }
-  // not JSON: the page shows it as an error
+  // not JSON: the page keeps it to show if claude exits
   app.executeOnPooledThread { process.errorStream.bufferedReader().forEachLine(onLine) }
   return process
 }

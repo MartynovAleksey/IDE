@@ -75,7 +75,7 @@ if (typeof document !== 'undefined') {
   const MODES = [['default', 'Ask before edits'], ['acceptEdits', 'Accept edits'], ['plan', 'Plan mode'], ['auto', 'Auto'], ['bypassPermissions', 'Bypass permissions']];
   let mode = 'default', model = 'default', models = [], popupItems = [], popupIndex = 0, popupPick = null;
   const cards = {}, pending = {}, tasks = new Map(), creating = {};
-  let live = null, busy = false, cwd = '', commands = [], files = null, images = [], titled = false, requestId = 0;
+  let thinking = null, workStart = 0, workTimer = null, diagnostics = [], live = null, busy = false, cwd = '', commands = [], files = null, images = [], titled = false, requestId = 0;
   let menuItems = [], menuIndex = 0, menuToken = null;
 
   const send = o => ide('stdin:' + JSON.stringify(o));
@@ -108,7 +108,17 @@ if (typeof document !== 'undefined') {
     if (stick) log.scrollTop = log.scrollHeight;
     return el;
   }
-  function setBusy(b) { busy = b; sendButton.textContent = b && !input.value.trim() ? 'Stop' : 'Send'; sendButton.classList.toggle('primary', !b || !!input.value.trim()); }
+  /** The line above the input while claude works: what it does and for how long, like the CLI's spinner. */
+  function working(label) {
+    $('work-label').textContent = label + '…';
+    if (!workTimer) { workStart = Date.now(); workTimer = setInterval(tick, 1000); }
+    tick(); $('working').hidden = false;
+  }
+  function tick() { $('work-time').textContent = Math.floor((Date.now() - workStart) / 1000) + 's'; }
+  function idle() { clearInterval(workTimer); workTimer = null; $('working').hidden = true; }
+  function setBusy(b) {
+    if (b !== busy) { if (b) working('Thinking'); else idle(); }
+    busy = b; sendButton.textContent = b && !input.value.trim() ? 'Stop' : 'Send'; sendButton.classList.toggle('primary', !b || !!input.value.trim()); }
 
   // ---- tools ----
 
@@ -170,6 +180,7 @@ if (typeof document !== 'undefined') {
 
   function answer(el, o, response, text) {
     send({ type: 'control_response', response: { subtype: 'success', request_id: o.request_id, response } });
+    if (busy) working('Thinking');
     el.querySelectorAll('button, input').forEach(b => { b.disabled = true; });
     el.querySelector('.btns').textContent = text;
     input.focus();
@@ -232,11 +243,17 @@ if (typeof document !== 'undefined') {
   function handle(o, history) {
     switch (o.type) {
       case 'stream_event': {
-        const e = o.event;
-        if (e.type === 'content_block_start' && e.content_block.type === 'text') live = { el: add('msg', '', target(o)), text: '' };
-        else if (e.type === 'content_block_delta' && e.delta.type === 'text_delta' && live) {
+        if (o.parent_tool_use_id) break;  // subagents show their complete messages in their Task
+        const e = o.event, block = e.content_block || {}, d = e.delta || {};
+        if (e.type === 'content_block_start') {
+          if (block.type === 'text') { live = { el: add('msg', ''), text: '' }; working('Writing'); }
+          else if (block.type === 'thinking') { thinking = { el: add('note thinking', '<details open><summary>Thinking…</summary><div></div></details>'), text: '' }; working('Thinking'); }
+          else if (block.type === 'tool_use') working('Running ' + toolName(block.name));
+        }
+        else if (e.type === 'content_block_delta') {
           const stick = atBottom();
-          live.text += e.delta.text; live.el.innerHTML = md(live.text);
+          if (d.type === 'text_delta' && live) { live.text += d.text; live.el.innerHTML = md(live.text); }
+          else if (d.type === 'thinking_delta' && thinking) { thinking.text += d.thinking; thinking.el.querySelector('details > div').innerHTML = md(thinking.text); }
           if (stick) log.scrollTop = log.scrollHeight;
         }
         break;
@@ -244,19 +261,27 @@ if (typeof document !== 'undefined') {
       case 'assistant':
         for (const b of (o.message && o.message.content) || []) {
           if (b.type === 'text') { if (live && !history) { live.el.innerHTML = md(b.text); live = null; } else add('msg', md(b.text), target(o)); }
-          else if (b.type === 'thinking' && b.thinking) add('note', '<details><summary>Thinking</summary>' + md(b.thinking) + '</details>', target(o));
+          else if (b.type === 'thinking' && thinking && !history && !o.parent_tool_use_id) {
+            // the streamed block is done: fold it like the CLI does
+            const details = thinking.el.querySelector('details');
+            details.open = false; details.querySelector('summary').textContent = 'Thinking';
+            if (b.thinking) details.querySelector('div').innerHTML = md(b.thinking);
+            thinking = null;
+          }
+          else if (b.type === 'thinking' && b.thinking) add('note thinking', '<details><summary>Thinking</summary><div>' + md(b.thinking) + '</div></details>', target(o));
           else if (b.type === 'tool_use') cards[b.id] = toolCard(b, target(o));
         }
         break;
       case 'user': {
         const content = o.message && o.message.content;
         if (Array.isArray(content)) content.filter(b => b.type === 'tool_result').forEach(toolResult);
+        if (busy && !history && !o.parent_tool_use_id) working('Thinking');
         const text = history && !o.isMeta && userText(content).trim();
         if (text && !text.startsWith('<')) add('msg user', esc(text));
         break;
       }
       case 'control_request':
-        if (o.request.subtype === 'can_use_tool') permission(o);
+        if (o.request.subtype === 'can_use_tool') { permission(o); working('Waiting for you'); }
         break;
       case 'control_response': {
         const r = o.response, resolve = pending[r.request_id];
@@ -269,21 +294,22 @@ if (typeof document !== 'undefined') {
         if (o.permissionMode) { mode = o.permissionMode; renderPickers(); }
         break;
       case 'result':
-        setBusy(false); live = null;
+        setBusy(false); live = null; thinking = null;
         if (String(o.terminal_reason).startsWith('aborted')) add('note', 'Stopped');
         else if (o.is_error) add('err', esc(o.result || (o.errors || []).join('\n') || o.subtype));
         refreshContext();
         break;
       case 'exit':
         setBusy(false);
-        add('err', 'claude exited with code ' + o.code + '. Open a new chat with +.');
+        add('err', 'claude exited with code ' + o.code + '. Open a new chat with +.' + (diagnostics.length ? '\n\n' + esc(diagnostics.join('\n')) : ''));
         break;
     }
   }
 
   window.onClaude = (line, history) => {
     let o;
-    try { o = JSON.parse(line); } catch (e) { if (line.trim()) add('err', esc(line)); return; }
+    // not JSON: claude's log (stderr) such as warnings about unknown model names; shown only if claude exits
+    try { o = JSON.parse(line); } catch (e) { if (line.trim()) diagnostics = diagnostics.slice(-29).concat(line); return; }
     handle(o, history);
   };
 
@@ -297,7 +323,10 @@ if (typeof document !== 'undefined') {
     const settings = await control({ subtype: 'get_settings' });
     const current = settings.applied && settings.applied.model;
     const match = models.find(m => m.value === current) || models.find(m => m.resolvedModel === current);
-    if (match) { model = match.value; renderPickers(); }
+    // a model claude does not list (a custom one behind ANTHROPIC_BASE_URL) is still the current one
+    if (!match && current) models.push({ value: current, displayName: current });
+    model = match ? match.value : current || model;
+    renderPickers();
     refreshContext();
   };
 
