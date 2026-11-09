@@ -17,6 +17,7 @@ dependencies {
     // compile against an installed IDE (ideaPath in gradle.properties or -PideaPath=...)
     local(providers.gradleProperty("ideaPath"))
     bundledPlugin("org.jetbrains.plugins.terminal")
+    bundledPlugin("com.intellij.modules.jcef")
   }
   testImplementation("junit:junit:4.13.2")
 }
