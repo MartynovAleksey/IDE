@@ -2,6 +2,7 @@
 package io.sdopenide.opencode
 
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
@@ -11,9 +12,19 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
+import com.intellij.terminal.JBTerminalPanel
+import com.intellij.terminal.JBTerminalSystemSettingsProviderBase
+import com.intellij.terminal.ui.TerminalWidget
+import com.jediterm.terminal.model.StyleState
+import com.jediterm.terminal.model.TerminalTextBuffer
+import com.jediterm.terminal.ui.settings.SettingsProvider
+import org.jetbrains.plugins.terminal.JBTerminalSystemSettingsProvider
 import org.jetbrains.plugins.terminal.LocalTerminalDirectRunner
+import org.jetbrains.plugins.terminal.ShellStartupOptions
+import org.jetbrains.plugins.terminal.ShellTerminalWidget
 import org.jetbrains.plugins.terminal.shellStartupOptions
 import java.nio.file.Files
+import java.awt.event.MouseEvent
 import java.nio.file.Path
 import javax.swing.SwingConstants
 
@@ -47,7 +58,7 @@ internal fun addShellSession(project: Project, toolWindow: ToolWindow, baseTitle
   val sessionDisposable = Disposer.newDisposable("$baseTitle session")
   val content = if (binary != null && Files.isRegularFile(binary)) {
     val options = shellStartupOptions(project.basePath) { it.envVariables(env) }
-    val widget = LocalTerminalDirectRunner.createTerminalRunner(project).startShellTerminalWidget(sessionDisposable, options, true)
+    val widget = AppMouseRunner(project).startShellTerminalWidget(sessionDisposable, options, true)
     widget.sendCommandToExecute(command) // resolved through PATH, see OpenCodePathCustomizer
     ContentFactory.getInstance().createContent(widget.component, title, false).also {
       it.preferredFocusableComponent = widget.preferredFocusableComponent
@@ -61,4 +72,25 @@ internal fun addShellSession(project: Project, toolWindow: ToolWindow, baseTitle
   content.setDisposer(sessionDisposable)
   manager.addContent(content)
   manager.setSelectedContent(content, true)
+}
+
+/**
+ * A local terminal that leaves mouse selection to the app while the app reports the mouse: opencode selects and copies within
+ * one of its panes itself, while the IDE terminal would select whole lines across all of them. Shift+drag still selects in the terminal.
+ */
+private class AppMouseRunner(project: Project) : LocalTerminalDirectRunner(project) {
+  override fun createShellTerminalWidget(parent: Disposable, startupOptions: ShellStartupOptions): TerminalWidget =
+    AppMouseWidget(myProject, settingsProvider, parent).asNewWidget()
+}
+
+private class AppMouseWidget(project: Project, settings: JBTerminalSystemSettingsProvider, parent: Disposable)
+  : ShellTerminalWidget(project, settings, parent) {
+  override fun createTerminalPanel(settingsProvider: SettingsProvider, styleState: StyleState, textBuffer: TerminalTextBuffer): JBTerminalPanel {
+    // the platform's provider always forces local selection even when the mouse is reported to the app
+    val panel = object : JBTerminalPanel(settingsProvider as JBTerminalSystemSettingsProviderBase, textBuffer, styleState) {
+      override fun isLocalMouseAction(e: MouseEvent): Boolean = !isRemoteMouseAction(e)
+    }
+    Disposer.register(this, panel)
+    return panel
+  }
 }
