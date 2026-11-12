@@ -17,7 +17,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-DEFAULT_VERSION = "1.19.5.6"
+DEFAULT_VERSION = "1.19.5.8"
 
 # os -> release archive name; the version is filled in
 ARCHIVES = {
@@ -30,7 +30,7 @@ ARCHIVES = {
 }
 
 # bundled blackbird versions; DEFAULT_VERSION goes to bin/, the others to bin/versions/<version>/
-VERSIONS = [DEFAULT_VERSION, "2.2.5.6"]
+VERSIONS = [DEFAULT_VERSION, "2.2.5.8"]
 
 CACHE = Path(__file__).parent / "build" / "blackbird-archives"
 ARCHIVES_LOCATION = os.environ.get("BLACKBIRD_ARCHIVES") or "https://github.com/MartynovAleksey/blackbird/releases/download/v{version}"

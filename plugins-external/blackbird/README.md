@@ -2,18 +2,18 @@
 
 [blackbird](https://github.com/MartynovAleksey/blackbird) in IntelliJ IDEA and SD-OpenIDE 2026.2 (262): a Blackbird tool window
 with session tabs and a version picker, settings, and `blackbird` on PATH of local terminals. Each zip carries blackbird
-1.19.5.6 (default, the `blackbird/v1` line) and 2.2.5.6 (`blackbird/v2`) for one OS.
+1.19.5.8 (default, the `blackbird/v1` line) and 2.2.5.8 (`blackbird/v2`) for one OS.
 
 ## Build
 
 ```bash
 ./gradlew buildPlugin
-python3 package_plugin.py build/distributions/blackbird-intellij-0.1.4.zip build/dist
+python3 package_plugin.py build/distributions/blackbird-intellij-0.1.5.zip build/dist
 ```
 
 The first command compiles against the installed SD-OpenIDE (`ideaPath` in `gradle.properties`, or `-PideaPath=...`).
 The second downloads the blackbird archives and writes
-`build/dist/blackbird-intellij-0.1.4-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
+`build/dist/blackbird-intellij-0.1.5-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
 pass OS names after the output directory to build only those.
 
 To change the blackbird versions, edit `DEFAULT_VERSION` and `VERSIONS` in `package_plugin.py`.
