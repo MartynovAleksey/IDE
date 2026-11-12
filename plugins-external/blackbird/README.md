@@ -12,12 +12,36 @@ python3 package_plugin.py build/distributions/blackbird-intellij-0.1.4.zip build
 ```
 
 The first command compiles against the installed SD-OpenIDE (`ideaPath` in `gradle.properties`, or `-PideaPath=...`).
-The second downloads the blackbird archives, checks their SHA-256 and writes
+The second downloads the blackbird archives and writes
 `build/dist/blackbird-intellij-0.1.4-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
 pass OS names after the output directory to build only those.
 
-To change the blackbird versions, edit `DEFAULT_VERSION` and `SHA256` in `package_plugin.py`; the hashes are in `SHA256SUMS`
-of the [blackbird releases](https://github.com/MartynovAleksey/blackbird/releases).
+To change the blackbird versions, edit `DEFAULT_VERSION` and `VERSIONS` in `package_plugin.py`.
+
+`BLACKBIRD_ARCHIVES` tells `package_plugin.py` where the release archives (`blackbird-v<version>-<os>.tar.gz|.zip`) are: a
+directory or a URL, where `{version}` stands for the version. Without it they are downloaded from the blackbird GitHub
+releases into `build/blackbird-archives/`, which also fits as a directory:
+`BLACKBIRD_ARCHIVES='build/blackbird-archives/{version}'`. Archives are not checked against a checksum, so any build of those versions fits.
+
+### In Docker
+
+The image has everything but the sources and blackbird: JDK 21, Python, SD-OpenIDE for Linux to compile against and the Gradle
+dependencies, so the build runs offline except for the blackbird archives.
+
+```bash
+docker build -f docker/Dockerfile -t blackbird-intellij-build .
+docker run --rm -v "$PWD:/src" blackbird-intellij-build
+```
+
+The container runs the tests and writes the six zips and `SHA256SUMS.txt` to `build/dist` of the mounted sources; pass OS names
+after the image name to build only those. Archives from another place:
+
+```bash
+docker run --rm -v "$PWD:/src" -e BLACKBIRD_ARCHIVES='https://example.com/blackbird/v{version}' blackbird-intellij-build
+docker run --rm -v "$PWD:/src" -v /path/to/archives:/archives -e BLACKBIRD_ARCHIVES='/archives/{version}' blackbird-intellij-build macos-arm64
+```
+
+Rebuild the image after changing the Gradle dependencies or the IDE version (`--build-arg SD_OPENIDE_VERSION=...`).
 
 ## Install
 
