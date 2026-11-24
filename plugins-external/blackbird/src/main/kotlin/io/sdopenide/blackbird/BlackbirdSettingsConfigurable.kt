@@ -20,6 +20,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.JBIntSpinner
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
@@ -30,6 +31,7 @@ import com.intellij.ui.dsl.builder.panel
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import javax.swing.DefaultComboBoxModel
 import javax.swing.JComponent
 import javax.swing.event.DocumentEvent
 
@@ -44,8 +46,10 @@ private data class Models(val model: String, val smallModel: String)
  * the IDE with it sees them too.
  */
 internal class BlackbirdSettingsConfigurable(private val project: Project) : Configurable {
-  private val versions = blackbirdVersions().map { it.version }
+  private var versions = blackbirdVersions().map { it.version }
+  private val externalBinaryField = TextFieldWithBrowseButton()
   private val defaultVersion = ComboBox(versions.toTypedArray())
+  private val scrollback = JBIntSpinner(DEFAULT_SCROLLBACK_LINES, 1, 1_000_000, 100)
   private val configVersion = ComboBox(versions.toTypedArray())
   private val configDirField = TextFieldWithBrowseButton()
   private val compatible = JBCheckBox("opencode-compatible mode")
@@ -76,6 +80,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
   override fun getDisplayName(): String = "Blackbird"
 
   override fun createComponent(): JComponent {
+    externalBinaryField.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleFile().withTitle("External blackbird"))
     configDirField.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleDir().withTitle("blackbird Config Directory"))
     opencodeDirField.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleDir().withTitle("opencode Config Directory"))
     importPath.addBrowseFolderListener(project, FileChooserDescriptorFactory.singleFileOrDir().withTitle("opencode File or Directory to Import"))
@@ -103,6 +108,16 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     return panel {
       row("Default version:") {
         cell(defaultVersion).comment("Opened by the Blackbird button and \"+\", and run by <code>blackbird</code> in Terminal")
+      }
+      row("External blackbird:") {
+        cell(externalBinaryField).align(AlignX.FILL).comment(
+          "A blackbird binary of your own, named $binaryName, listed among the versions as \"&lt;version&gt; external\" with its own " +
+          "configuration; its directory goes on PATH of its tabs and, as the default version, of Terminal. Leave empty for the bundled ones only.")
+      }
+      row("Tab history (lines):") {
+        cell(scrollback).comment(
+          "Lines the Blackbird tabs keep above the screen, instead of the IDE terminal buffer size; blackbird's interface fills " +
+          "them as it scrolls, and a big history slows the IDE down in long sessions. Applies to tabs opened after the change.")
       }
       group("Configuration") {
         row("Version:") { cell(configVersion) }
@@ -168,6 +183,17 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     opencodeDirs.clear()
     interruptHints.clear()
     editedModels.clear()
+    externalBinaryField.text = externalBinarySetting
+    versions = blackbirdVersions().map { it.version }
+    updating = true
+    try {
+      defaultVersion.model = DefaultComboBoxModel(versions.toTypedArray())
+      configVersion.model = DefaultComboBoxModel(versions.toTypedArray())
+    }
+    finally {
+      updating = false
+    }
+    if (shownVersion !in versions) shownVersion = null
     savedModels.clear()
     for (version in versions) {
       paths[version] = blackbirdConfigDirSetting(version)
@@ -176,6 +202,7 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
       interruptHints[version] = interruptHint(version)
     }
     defaultVersion.selectedItem = defaultBlackbirdVersion()?.version
+    scrollback.number = scrollbackLines
     show(shownVersion ?: defaultBlackbirdVersion()?.version ?: return)
   }
 
@@ -255,6 +282,8 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
 
   override fun isModified(): Boolean =
     defaultVersion.selectedItem != defaultBlackbirdVersion()?.version ||
+    scrollback.number != scrollbackLines ||
+    externalBinaryField.text.trim() != externalBinarySetting ||
     versions.any {
       paths[it].orEmpty().trim() != blackbirdConfigDirSetting(it) ||
       isCompatible(it) != opencodeCompatible(it) ||
@@ -264,7 +293,9 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
     changedModels().isNotEmpty()
 
   override fun apply() {
+    applyExternalBinary()
     (defaultVersion.selectedItem as String?)?.let { defaultBlackbirdVersionName = it }
+    scrollbackLines = scrollback.number
     for (version in versions) {
       setBlackbirdConfigDirSetting(version, paths[version].orEmpty())
       setOpencodeCompatible(version, isCompatible(version))
@@ -288,6 +319,33 @@ internal class BlackbirdSettingsConfigurable(private val project: Project) : Con
       LocalFileSystem.getInstance().refreshNioFiles(listOf(file))
     }
     reset()
+  }
+
+  /** Takes the version of a newly given external blackbird from its `--version`, refusing a file the sessions cannot run. */
+  private fun applyExternalBinary() {
+    val text = externalBinaryField.text.trim()
+    if (text == externalBinarySetting) return
+    val binary = configDir(text)
+    if (binary == null) {
+      externalVersionSetting = ""
+      externalBinarySetting = ""
+      return
+    }
+    if (!Files.isRegularFile(binary)) throw ConfigurationException("External blackbird: no file $binary", "Blackbird")
+    // tabs and Terminal run `blackbird` from PATH
+    if (binary.fileName.toString() != binaryName) throw ConfigurationException("External blackbird: the file must be named $binaryName", "Blackbird")
+    val output = try {
+      ProgressManager.getInstance().runProcessWithProgressSynchronously<ProcessOutput, ExecutionException>(
+        { CapturingProcessHandler(GeneralCommandLine(binary.toString(), "--version")).runProcess(30_000) }, "blackbird --version", false, project)
+    }
+    catch (e: ExecutionException) {
+      throw ConfigurationException("External blackbird: ${e.message}", "Blackbird")
+    }
+    if (output.exitCode != 0 || output.isTimeout) {
+      throw ConfigurationException("External blackbird: <code>$binary --version</code> failed: ${output.stderr.ifBlank { output.stdout }}", "Blackbird")
+    }
+    externalVersionSetting = externalVersion(output.stdout)
+    externalBinarySetting = text
   }
 
   private fun openInEditor() {

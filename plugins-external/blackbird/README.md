@@ -8,12 +8,12 @@ with session tabs and a version picker, settings, and `blackbird` on PATH of loc
 
 ```bash
 ./gradlew buildPlugin
-python3 package_plugin.py build/distributions/blackbird-intellij-0.1.5.zip build/dist
+python3 package_plugin.py build/distributions/blackbird-intellij-0.1.6.zip build/dist
 ```
 
 The first command compiles against the installed SD-OpenIDE (`ideaPath` in `gradle.properties`, or `-PideaPath=...`).
 The second downloads the blackbird archives and writes
-`build/dist/blackbird-intellij-0.1.5-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
+`build/dist/blackbird-intellij-0.1.6-{macos-arm64,macos-x64,linux-x64,linux-arm64,windows-x64,windows-arm64}.zip`;
 pass OS names after the output directory to build only those.
 
 To change the blackbird versions, edit `DEFAULT_VERSION` and `VERSIONS` in `package_plugin.py`.
@@ -52,6 +52,13 @@ Settings | Plugins | ⚙ | Install Plugin from Disk…, pick the zip for your OS
 Settings | Tools | Blackbird, also in the "⋮" menu of the tool window:
 
 - **Default version** — the blackbird that the Blackbird button, "+" and `blackbird` in Terminal run.
+- **External blackbird** — a blackbird binary of your own, named `blackbird` (`blackbird.exe`). Apply runs its `--version`
+  and lists it among the versions as "&lt;version&gt; external", with its own configuration, in "+"'s version popup and as a
+  possible default version. Its directory goes on PATH of its tabs (and of Terminal when it is the default), since they run
+  `blackbird` from PATH.
+- **Tab history (lines)**, 1000 by default — the history of Blackbird tabs, instead of the IDE-wide terminal buffer size
+  (Advanced Settings, 5000 by default). blackbird's interface fills it as it scrolls, and a long session with a big history costs
+  memory and paint time. New tabs take the value; Terminal keeps the IDE-wide size.
 - **Configuration** — per version:
   - its config directory (`blackbird.json`, `agent/`, `command/`, `plugin/`, …), passed as `BLACKBIRD_CONFIG_DIR` and applied
     on top of the global `~/.config/blackbird` (empty: the global directory only);

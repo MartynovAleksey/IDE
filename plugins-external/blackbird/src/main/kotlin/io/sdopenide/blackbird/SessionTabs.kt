@@ -3,6 +3,7 @@ package io.sdopenide.blackbird
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.options.advanced.AdvancedSettings
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
@@ -80,7 +81,26 @@ internal fun addShellSession(project: Project, toolWindow: ToolWindow, baseTitle
  */
 private class AppMouseRunner(project: Project) : LocalTerminalDirectRunner(project) {
   override fun createShellTerminalWidget(parent: Disposable, startupOptions: ShellStartupOptions): TerminalWidget =
-    AppMouseWidget(myProject, settingsProvider, parent).asNewWidget()
+    withBufferLines(scrollbackLines) { AppMouseWidget(myProject, settingsProvider, parent) }.asNewWidget()
+}
+
+private const val BUFFER_LINES_SETTING = "terminal.buffer.max.lines.count"
+
+/**
+ * Creates a terminal with [lines] of history. The platform takes the history size only from this IDE-wide setting, read once when
+ * the terminal is created, so it is set for the creation alone: blackbird's TUI fills the history of its tab with frames it
+ * scrolls, and a long session's 5000 lines cost memory and paint time.
+ */
+private fun <T> withBufferLines(lines: Int, create: () -> T): T {
+  val previous = AdvancedSettings.getInt(BUFFER_LINES_SETTING)
+  if (lines <= 0 || lines == previous) return create()
+  AdvancedSettings.setInt(BUFFER_LINES_SETTING, lines)
+  try {
+    return create()
+  }
+  finally {
+    AdvancedSettings.setInt(BUFFER_LINES_SETTING, previous)
+  }
 }
 
 private class AppMouseWidget(project: Project, settings: JBTerminalSystemSettingsProvider, parent: Disposable)

@@ -20,23 +20,47 @@ private fun bundledBinDir(): Path? = PluginManagerCore.getPlugin(PluginId.getId(
 /** The plugin's own blackbird (`bin/blackbird[.exe]`); absent in a zip built without package_plugin.py, e.g. in `runIde`. */
 internal fun blackbirdBinaryPath(): Path? = bundledBinDir()?.resolve(binaryName)
 
-/** A bundled blackbird binary and its version. */
+/** A blackbird binary, bundled or external, and its version. */
 internal data class BlackbirdVersion(val version: @NlsSafe String, val binary: Path)
 
-/** `bin/blackbird[.exe]` (its version is in `bin/version.txt` from package_plugin.py), then each `bin/versions/<version>/`. */
+/**
+ * `bin/blackbird[.exe]` (its version is in `bin/version.txt` from package_plugin.py), then each `bin/versions/<version>/`,
+ * then the external blackbird given in Settings.
+ */
 internal fun blackbirdVersions(): List<BlackbirdVersion> {
-  val binDir = bundledBinDir() ?: return emptyList()
-  val main = binDir.resolve(binaryName).takeIf { Files.isRegularFile(it) }?.let {
+  val binDir = bundledBinDir()
+  val main = binDir?.resolve(binaryName)?.takeIf { Files.isRegularFile(it) }?.let {
     val version = runCatching { Files.readString(binDir.resolve("version.txt")).trim() }.getOrNull()
     BlackbirdVersion(version?.ifEmpty { null } ?: "bundled", it)
   }
-  val versionsDir = binDir.resolve("versions").takeIf { it.isDirectory() }
+  val versionsDir = binDir?.resolve("versions")?.takeIf { it.isDirectory() }
   val extra = versionsDir?.listDirectoryEntries().orEmpty()
     .map { BlackbirdVersion(it.name, it.resolve(binaryName)) }
     .filter { Files.isRegularFile(it.binary) }
     .sortedBy { it.version }
-  return listOfNotNull(main) + extra
+  val external = configDir(externalBinarySetting)?.takeIf { Files.isRegularFile(it) }
+    ?.let { BlackbirdVersion(externalVersionSetting.ifEmpty { EXTERNAL }, it) }
+  return listOfNotNull(main) + extra + listOfNotNull(external)
 }
+
+private const val EXTERNAL = "external"
+
+/** The external blackbird binary as typed in Settings, "" if none. */
+internal var externalBinarySetting: String
+  get() = PropertiesComponent.getInstance().getValue("sd.blackbird.externalBinary", "")
+  set(value) = PropertiesComponent.getInstance().setValue("sd.blackbird.externalBinary", value.trim(), "")
+
+/** The version of the external blackbird, taken from its `--version` when it was set; see [externalVersion]. */
+internal var externalVersionSetting: String
+  get() = PropertiesComponent.getInstance().getValue("sd.blackbird.externalVersion", "")
+  set(value) = PropertiesComponent.getInstance().setValue("sd.blackbird.externalVersion", value, "")
+
+/**
+ * The version an external blackbird printing [versionOutput] for `--version` is listed under: "<version> external", so it keeps its
+ * own settings next to a bundled blackbird of the same version, and its major version still picks what the session gets.
+ */
+internal fun externalVersion(versionOutput: String): String =
+  Regex("""\d+(\.\d+)+""").find(versionOutput)?.value?.let { "$it $EXTERNAL" } ?: EXTERNAL
 
 /** The version chosen in Settings | Tools | Blackbird, or the plugin's own blackbird if none is chosen or it is gone. */
 internal fun defaultBlackbirdVersion(): BlackbirdVersion? =
@@ -45,6 +69,13 @@ internal fun defaultBlackbirdVersion(): BlackbirdVersion? =
 internal var defaultBlackbirdVersionName: String
   get() = PropertiesComponent.getInstance().getValue("sd.blackbird.defaultVersion", "")
   set(value) = PropertiesComponent.getInstance().setValue("sd.blackbird.defaultVersion", value, "")
+
+internal const val DEFAULT_SCROLLBACK_LINES: Int = 1000
+
+/** Lines of history the Blackbird tabs keep, instead of the IDE-wide terminal buffer size; taken when a tab opens. */
+internal var scrollbackLines: Int
+  get() = PropertiesComponent.getInstance().getInt("sd.blackbird.scrollbackLines", DEFAULT_SCROLLBACK_LINES)
+  set(value) = PropertiesComponent.getInstance().setValue("sd.blackbird.scrollbackLines", value, DEFAULT_SCROLLBACK_LINES)
 
 /** The config directory for [version] as typed in Settings, "" if none. */
 internal fun blackbirdConfigDirSetting(version: String): String = PropertiesComponent.getInstance().getValue("sd.blackbird.configDir.$version", "")
